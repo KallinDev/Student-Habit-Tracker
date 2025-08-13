@@ -179,6 +179,60 @@ const updateHabitStreaks = (habitId) => {
 
 // Routes
 
+// Add this above: // Error handling
+app.get('/api/user/stats', (req, res) => {
+  try {
+    const userId = getUserId(req);
+
+    const habits = statements.getAllHabits.all(userId);
+
+    if (!habits.length) {
+      return res.json({
+        activeHabits: 0,
+        totalDays: 0,
+        successRate: 0,
+        bestStreak: 0
+      });
+    }
+
+    const activeHabits = habits.length;
+
+    const earliestCreatedAt = habits.reduce((earliest, habit) => {
+      const createdAt = new Date(habit.created_at);
+      return createdAt < earliest ? createdAt : earliest;
+    }, new Date());
+
+    const totalDays = Math.floor((new Date() - earliestCreatedAt) / (1000 * 60 * 60 * 24));
+
+    let totalSuccessRate = 0;
+    let bestStreak = 0;
+
+    for (const habit of habits) {
+      const rate = calculateSuccessRate(habit.id);
+      totalSuccessRate += rate;
+      if (habit.best_streak > bestStreak) bestStreak = habit.best_streak;
+    }
+
+    const avgSuccessRate = Math.round(totalSuccessRate / habits.length);
+
+    res.json({
+      activeHabits,
+      totalDays,
+      successRate: avgSuccessRate,
+      bestStreak
+    });
+
+  } catch (error) {
+    console.error("Error calculating user stats:", error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve user stats',
+      error: error.message
+    });
+  }
+});
+
+
 // GET /api/habits - Get all habits
 app.get('/api/habits', (req, res) => {
   try {
