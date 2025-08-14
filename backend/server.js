@@ -13,19 +13,18 @@ const db = new Database(process.env.DB_PATH || 'habits.db');
 
 // Create tables if they don't exist
 const initDb = () => {
-  // Habits table - Contains all required fields
   db.exec(`
     CREATE TABLE IF NOT EXISTS habits (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id TEXT NOT NULL,
-      name TEXT NOT NULL,                    -- ✅ name
-      icon TEXT DEFAULT '⭐',                -- ✅ icon  
-      frequency TEXT NOT NULL CHECK(frequency IN ('daily', 'weekly', 'custom')), -- ✅ frequency
-      daily_goal INTEGER NOT NULL,          -- ✅ daily goal
-      unit TEXT NOT NULL,                   -- ✅ unit
-      description TEXT,                     -- ✅ description (optional)
-      reminder_enabled BOOLEAN DEFAULT FALSE, -- ✅ reminderEnabled
-      reminder_time TEXT DEFAULT '09:00',   -- ✅ reminderTime
+      name TEXT NOT NULL,
+      icon TEXT DEFAULT '⭐',
+      frequency TEXT NOT NULL CHECK(frequency IN ('daily', 'weekly', 'custom')),
+      daily_goal INTEGER NOT NULL,
+      unit TEXT NOT NULL,
+      description TEXT,
+      reminder_enabled BOOLEAN DEFAULT FALSE,
+      reminder_time TEXT DEFAULT '09:00',
       current_streak INTEGER DEFAULT 0,
       best_streak INTEGER DEFAULT 0,
       total_completions INTEGER DEFAULT 0,
@@ -34,7 +33,6 @@ const initDb = () => {
     )
   `);
 
-  // Daily completions table for tracking progress
   db.exec(`
     CREATE TABLE IF NOT EXISTS habit_completions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,13 +50,91 @@ const initDb = () => {
 
 initDb();
 
+// --- SEED DEFAULT HABITS FOR NEW USERS ---
+const starterHabits = [
+  {
+    name: "Drink water",
+    icon: "💧",
+    frequency: "daily",
+    daily_goal: 1,
+    unit: "glass",
+    description: "Stay hydrated",
+    reminder_enabled: false,
+    reminder_time: "09:00"
+  },
+  {
+    name: "Read book",
+    icon: "📚",
+    frequency: "daily",
+    daily_goal: 1,
+    unit: "chapter",
+    description: "Read every day",
+    reminder_enabled: false,
+    reminder_time: "09:00"
+  },
+  {
+    name: "Exercise",
+    icon: "🏋️‍♂️",
+    frequency: "weekly",
+    daily_goal: 3,
+    unit: "times",
+    description: "Move your body",
+    reminder_enabled: false,
+    reminder_time: "09:00"
+  },
+  {
+    name: "Meditate",
+    icon: "🧠",
+    frequency: "daily",
+    daily_goal: 1,
+    unit: "session",
+    description: "Mindfulness",
+    reminder_enabled: false,
+    reminder_time: "09:00"
+  },
+  {
+    name: "Journal",
+    icon: "📝",
+    frequency: "daily",
+    daily_goal: 1,
+    unit: "entry",
+    description: "Write your day",
+    reminder_enabled: false,
+    reminder_time: "09:00"
+  }
+];
+
+// Helper to seed starter habits for a user if they have none
+function seedStarterHabitsForUser(userId) {
+  const existing = db.prepare('SELECT COUNT(*) as count FROM habits WHERE user_id = ?').get(userId);
+  if (existing.count === 0) {
+    const insert = db.prepare(`
+      INSERT INTO habits (user_id, name, icon, frequency, daily_goal, unit, description, reminder_enabled, reminder_time)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    for (const habit of starterHabits) {
+      insert.run(
+        userId,
+        habit.name,
+        habit.icon,
+        habit.frequency,
+        habit.daily_goal,
+        habit.unit,
+        habit.description,
+        habit.reminder_enabled ? 1 : 0,
+        habit.reminder_time
+      );
+    }
+    console.log(`🌱 Seeded starter habits for user: ${userId}`);
+  }
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 // Prepared statements for better performance
 const statements = {
-  // Habits
   getAllHabits: db.prepare('SELECT * FROM habits WHERE user_id = ? ORDER BY created_at DESC'),
   getHabitById: db.prepare('SELECT * FROM habits WHERE id = ? AND user_id = ?'),
   createHabit: db.prepare(`
@@ -77,8 +153,6 @@ const statements = {
     SET current_streak = ?, best_streak = ?, total_completions = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `),
-
-  // Completions
   getCompletion: db.prepare('SELECT * FROM habit_completions WHERE habit_id = ? AND completion_date = ?'),
   addCompletion: db.prepare(`
     INSERT OR REPLACE INTO habit_completions (habit_id, completion_date, completed_amount)
@@ -130,16 +204,44 @@ const habitValidation = [
 ];
 
 // Helper functions
-const getUserId = (req) => req.headers['user-id'] || 'demo_user';
+const getUserId = (req) => req.headers['user-id'] || 'default_user';
 
-const calculateSuccessRate = (habitId) => {
-  const stats = statements.getCompletionStats.get(habitId);
-  if (!stats || stats.total_days === 0) return 0;
-  return Math.round((stats.total_days / 30) * 100);
-};
+// --- NEW: Calculate success rate for a habit (last N days) ---
+function calculateSuccessRateForHabit(habitId, days = 21) {
+  // Get completions for this habit (last N days)
+  const completions = db.prepare(
+    `SELECT completion_date FROM habit_completions WHERE habit_id = ? AND completion_date >= date('now', ?)`
+  ).all(habitId, `-${days - 1} days`);
+
+  // If no completions yet, success rate is 0%
+  if (completions.length === 0) return 0;
+
+  // Build date array for last N days (oldest first)
+  const dates = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    dates.push(date.toISOString().split('T')[0]);
+  }
+
+  // Find first completion date
+  const sortedCompletions = completions.map(c => c.completion_date).sort();
+  const firstCompletionDate = sortedCompletions[0];
+
+  // Only consider days since first completion
+  const relevantDates = dates.filter(date => date >= firstCompletionDate);
+  const completedSet = new Set(completions.map(c => c.completion_date));
+  const relevantCompletedDays = relevantDates.filter(date => completedSet.has(date)).length;
+
+  // If all relevant days are completed, success rate is 100%
+  if (relevantCompletedDays === relevantDates.length) return 100;
+
+  // Otherwise, calculate actual percentage
+  return Math.round((relevantCompletedDays / relevantDates.length) * 100);
+}
 
 const updateHabitStreaks = (habitId) => {
-  const completions = statements.getHabitCompletions.get(habitId, 30);
+  const completions = statements.getHabitCompletions.all(habitId, 30);
   let currentStreak = 0;
   let bestStreak = 0;
   let tempStreak = 0;
@@ -147,14 +249,12 @@ const updateHabitStreaks = (habitId) => {
   const today = new Date().toISOString().split('T')[0];
   const dates = [];
   
-  // Generate last 30 days
   for (let i = 0; i < 30; i++) {
     const date = new Date();
     date.setDate(date.getDate() - i);
     dates.push(date.toISOString().split('T')[0]);
   }
   
-  // Calculate streaks
   for (const date of dates) {
     const completed = completions.some(c => c.completion_date === date);
     if (completed) {
@@ -177,80 +277,23 @@ const updateHabitStreaks = (habitId) => {
   return { currentStreak, bestStreak, totalCompletions };
 };
 
-// Routes
-
-// Add this above: // Error handling
-app.get('/api/user/stats', (req, res) => {
+// --- SEED DEFAULT HABITS ON FIRST GET ---
+app.get('/api/user/habits', (req, res) => {
   try {
     const userId = getUserId(req);
+    seedStarterHabitsForUser(userId); // Seed if none exist
 
     const habits = statements.getAllHabits.all(userId);
 
-    if (!habits.length) {
-      return res.json({
-        activeHabits: 0,
-        totalDays: 0,
-        successRate: 0,
-        bestStreak: 0
-      });
-    }
-
-    const activeHabits = habits.length;
-
-    const earliestCreatedAt = habits.reduce((earliest, habit) => {
-      const createdAt = new Date(habit.created_at);
-      return createdAt < earliest ? createdAt : earliest;
-    }, new Date());
-
-    const totalDays = Math.floor((new Date() - earliestCreatedAt) / (1000 * 60 * 60 * 24));
-
-    let totalSuccessRate = 0;
-    let bestStreak = 0;
-
-    for (const habit of habits) {
-      const rate = calculateSuccessRate(habit.id);
-      totalSuccessRate += rate;
-      if (habit.best_streak > bestStreak) bestStreak = habit.best_streak;
-    }
-
-    const avgSuccessRate = Math.round(totalSuccessRate / habits.length);
-
-    res.json({
-      activeHabits,
-      totalDays,
-      successRate: avgSuccessRate,
-      bestStreak
-    });
-
-  } catch (error) {
-    console.error("Error calculating user stats:", error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to retrieve user stats',
-      error: error.message
-    });
-  }
-});
-
-
-// GET /api/habits - Get all habits
-app.get('/api/habits', (req, res) => {
-  try {
-    const userId = getUserId(req);
-    const habits = statements.getAllHabits.all(userId);
-    
-    // Add calculated success rates
-    const habitsWithStats = habits.map(habit => ({
-      ...habit,
-      successRate: calculateSuccessRate(habit.id),
-      reminderEnabled: Boolean(habit.reminder_enabled)
-    }));
-    
-    res.json({
-      success: true,
-      data: habitsWithStats,
-      count: habitsWithStats.length
-    });
+    res.json(
+      Array.isArray(habits)
+        ? habits.map(habit => ({
+            ...habit,
+            successRate: calculateSuccessRateForHabit(habit.id, 21),
+            reminderEnabled: Boolean(habit.reminder_enabled)
+          }))
+        : []
+    );
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -260,204 +303,79 @@ app.get('/api/habits', (req, res) => {
   }
 });
 
-// POST /api/habits - Create new habit
-app.post('/api/habits', habitValidation, (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation failed',
-      errors: errors.array()
-    });
-  }
-
+// --- GET USER STATS (activeHabits, totalDays, successRate, bestStreak, currentStreak) ---
+app.get('/api/user/stats', (req, res) => {
   try {
     const userId = getUserId(req);
-    const { name, icon, frequency, dailyGoal, unit, description, reminderEnabled, reminderTime } = req.body;
-    
-    const result = statements.createHabit.run(
-      userId,
-      name,
-      icon || '⭐',
-      frequency,
-      dailyGoal,
-      unit,
-      description || '',
-      reminderEnabled || false,
-      reminderTime || '09:00'
-    );
-    
-    const newHabit = statements.getHabitById.get(result.lastInsertRowid, userId);
-    
-    res.status(201).json({
-      success: true,
-      message: 'Habit created successfully',
-      data: {
-        ...newHabit,
-        successRate: 0,
-        reminderEnabled: Boolean(newHabit.reminder_enabled)
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to create habit',
-      error: error.message
-    });
-  }
-});
+    const habits = statements.getAllHabits.all(userId);
 
-// GET /api/habits/:id - Get specific habit
-app.get('/api/habits/:id', (req, res) => {
-  try {
-    const userId = getUserId(req);
-    const habitId = parseInt(req.params.id);
-    
-    const habit = statements.getHabitById.get(habitId, userId);
-    
-    if (!habit) {
-      return res.status(404).json({
-        success: false,
-        message: 'Habit not found'
-      });
-    }
-    
+    let bestStreak = 0;
+    let currentStreak = 0;
+    let successRates = [];
+
+    habits.forEach(habit => {
+      if (habit.best_streak > bestStreak) bestStreak = habit.best_streak;
+      if (habit.current_streak > currentStreak) currentStreak = habit.current_streak;
+
+      // Calculate success rate for each habit
+      const rate = typeof habit.successRate === "number"
+        ? habit.successRate
+        : calculateSuccessRateForHabit(habit.id, 21);
+      successRates.push(rate);
+    });
+
+    // Average success rate
+    const successRate =
+      successRates.length > 0
+        ? Math.round(successRates.reduce((a, b) => a + b, 0) / successRates.length)
+        : 0;
+
+    // Count unique days with any completion for this user
+    const uniqueDaysRow = db.prepare(`
+      SELECT COUNT(DISTINCT completion_date) as count
+      FROM habit_completions
+      WHERE habit_id IN (
+        SELECT id FROM habits WHERE user_id = ?
+      )
+    `).get(userId);
+    const totalDays = uniqueDaysRow.count;
+
     res.json({
-      success: true,
-      data: {
-        ...habit,
-        successRate: calculateSuccessRate(habit.id),
-        reminderEnabled: Boolean(habit.reminder_enabled)
-      }
+      activeHabits: habits.length,
+      totalDays,
+      successRate,
+      bestStreak,
+      currentStreak
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to retrieve habit',
+      message: 'Failed to retrieve user stats',
       error: error.message
     });
   }
 });
 
-// PUT /api/habits/:id - Update habit
-app.put('/api/habits/:id', habitValidation, (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation failed',
-      errors: errors.array()
-    });
-  }
-
-  try {
-    const userId = getUserId(req);
-    const habitId = parseInt(req.params.id);
-    const { name, icon, frequency, dailyGoal, unit, description, reminderEnabled, reminderTime } = req.body;
-    
-    const result = statements.updateHabit.run(
-      name,
-      icon || '⭐',
-      frequency,
-      dailyGoal,
-      unit,
-      description || '',
-      reminderEnabled || false,
-      reminderTime || '09:00',
-      habitId,
-      userId
-    );
-    
-    if (result.changes === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Habit not found'
-      });
-    }
-    
-    const updatedHabit = statements.getHabitById.get(habitId, userId);
-    
-    res.json({
-      success: true,
-      message: 'Habit updated successfully',
-      data: {
-        ...updatedHabit,
-        successRate: calculateSuccessRate(habitId),
-        reminderEnabled: Boolean(updatedHabit.reminder_enabled)
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update habit',
-      error: error.message
-    });
-  }
-});
-
-// DELETE /api/habits/:id - Delete habit
-app.delete('/api/habits/:id', (req, res) => {
-  try {
-    const userId = getUserId(req);
-    const habitId = parseInt(req.params.id);
-    
-    const habit = statements.getHabitById.get(habitId, userId);
-    if (!habit) {
-      return res.status(404).json({
-        success: false,
-        message: 'Habit not found'
-      });
-    }
-    
-    const result = statements.deleteHabit.run(habitId, userId);
-    
-    res.json({
-      success: true,
-      message: 'Habit deleted successfully',
-      data: habit
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete habit',
-      error: error.message
-    });
-  }
-});
-
-// POST /api/habits/:id/complete - Mark habit as completed
+// --- COMPLETE HABIT FOR TODAY ---
 app.post('/api/habits/:id/complete', (req, res) => {
   try {
     const userId = getUserId(req);
-    const habitId = parseInt(req.params.id);
-    const amount = req.body.amount || 1;
-    const date = req.body.date || new Date().toISOString().split('T')[0];
-    
+    const habitId = parseInt(req.params.id, 10);
     const habit = statements.getHabitById.get(habitId, userId);
     if (!habit) {
-      return res.status(404).json({
-        success: false,
-        message: 'Habit not found'
-      });
+      return res.status(404).json({ success: false, message: 'Habit not found' });
     }
-    
-    // Add completion
-    statements.addCompletion.run(habitId, date, amount);
-    
+
+    // Use provided date or today
+    const date = req.body.date || new Date().toISOString().split('T')[0];
+
+    // Add completion (or update if already exists)
+    statements.addCompletion.run(habitId, date, 1);
+
     // Update streaks
-    const stats = updateHabitStreaks(habitId);
-    
-    const updatedHabit = statements.getHabitById.get(habitId, userId);
-    
-    res.json({
-      success: true,
-      message: 'Habit marked as completed',
-      data: {
-        ...updatedHabit,
-        successRate: calculateSuccessRate(habitId),
-        reminderEnabled: Boolean(updatedHabit.reminder_enabled)
-      }
-    });
+    updateHabitStreaks(habitId);
+
+    res.json({ success: true, message: 'Habit marked as completed', date });
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -467,45 +385,122 @@ app.post('/api/habits/:id/complete', (req, res) => {
   }
 });
 
-// GET /api/habits/:id/stats - Get habit statistics
-app.get('/api/habits/:id/stats', (req, res) => {
+app.get('/api/user/habits/completions', (req, res) => {
+  try {
+    const userId = req.headers['user-id'] || 'default_user';
+    const today = new Date().toISOString().split('T')[0];
+    const habits = statements.getAllHabits.all(userId);
+    const completions = habits.map(habit => {
+      const completion = statements.getCompletion.get(habit.id, today);
+      return { habitId: habit.id, completed: !!completion };
+    });
+    res.json(completions);
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to get completions', error: error.message });
+  }
+});
+
+app.post('/api/habits/:id/uncomplete', (req, res) => {
   try {
     const userId = getUserId(req);
-    const habitId = parseInt(req.params.id);
-    
+    const habitId = parseInt(req.params.id, 10);
     const habit = statements.getHabitById.get(habitId, userId);
     if (!habit) {
-      return res.status(404).json({
-        success: false,
-        message: 'Habit not found'
-      });
+      return res.status(404).json({ success: false, message: 'Habit not found' });
     }
-    
-    const monthStats = statements.getCompletionStats.get(habitId);
-    const recentCompletions = statements.getHabitCompletions.get(habitId, 7);
-    
-    const totalDays = Math.floor((new Date() - new Date(habit.created_at)) / (1000 * 60 * 60 * 24));
-    
-    const stats = {
-      currentStreak: habit.current_streak,
-      bestStreak: habit.best_streak,
-      totalCompletions: habit.total_completions,
-      successRate: calculateSuccessRate(habitId),
-      totalDays: totalDays,
-      last7Days: recentCompletions,
-      monthlyStats: monthStats
-    };
-    
-    res.json({
-      success: true,
-      data: stats
-    });
+    const date = req.body.date || new Date().toISOString().split('T')[0];
+    db.prepare('DELETE FROM habit_completions WHERE habit_id = ? AND completion_date = ?').run(habitId, date);
+    updateHabitStreaks(habitId);
+    res.json({ success: true, message: 'Habit unmarked as completed', date });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to uncomplete habit', error: error.message });
+  }
+});
+
+// --- Get habit completion history for last N days ---
+app.get('/api/habits/:id/history', (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const habitId = parseInt(req.params.id, 10);
+    const days = parseInt(req.query.days, 10) || 21;
+
+    // Get habit to verify ownership
+    const habit = statements.getHabitById.get(habitId, userId);
+    if (!habit) {
+      return res.status(404).json({ success: false, message: 'Habit not found' });
+    }
+
+    // Build date array for last N days (oldest first)
+    const dates = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      dates.push(date.toISOString().split('T')[0]);
+    }
+
+    // Get completions for this habit
+    const completions = db.prepare(
+      `SELECT completion_date FROM habit_completions WHERE habit_id = ? AND completion_date >= date('now', ?)`
+    ).all(habitId, `-${days - 1} days`);
+
+    const completedSet = new Set(completions.map(c => c.completion_date));
+
+    // Build history array
+    const history = dates.map(date => ({
+      date,
+      completed: completedSet.has(date)
+    }));
+
+    res.json(history);
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Failed to retrieve stats',
+      message: 'Failed to get habit history',
       error: error.message
     });
+  }
+});
+
+app.put('/api/habits/:id', (req, res) => {
+  try {
+    const userId = req.headers['user-id'] || 'default_user';
+    const habitId = parseInt(req.params.id, 10);
+    const habit = statements.getHabitById.get(habitId, userId);
+    if (!habit) {
+      return res.status(404).json({ success: false, message: 'Habit not found' });
+    }
+    const { name, description, frequency } = req.body;
+    statements.updateHabit.run(
+      name,
+      habit.icon,
+      frequency,
+      habit.daily_goal,
+      habit.unit,
+      description,
+      habit.reminder_enabled,
+      habit.reminder_time,
+      habitId,
+      userId
+    );
+    res.json({ success: true, message: 'Habit updated' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to update habit', error: error.message });
+  }
+});
+
+// --- DELETE HABIT ---
+app.delete('/api/habits/:id', (req, res) => {
+  try {
+    const userId = req.headers['user-id'] || 'default_user';
+    const habitId = parseInt(req.params.id, 10);
+    const habit = statements.getHabitById.get(habitId, userId);
+    if (!habit) {
+      return res.status(404).json({ success: false, message: 'Habit not found' });
+    }
+    statements.deleteHabit.run(habitId, userId);
+    res.json({ success: true, message: 'Habit deleted' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to delete habit', error: error.message });
   }
 });
 

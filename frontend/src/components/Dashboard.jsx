@@ -1,32 +1,80 @@
-import React, { useState } from "react";
-import {
-  Settings,
-  LogOut,
-  User,
-  BarChart3,
-  Target,
-  Info,
-  Droplets,
-  Book,
-  Dumbbell,
-  Brain,
-  PenTool,
-} from "lucide-react";
+import React, { useState, useEffect, useContext } from "react";
+import { Droplets, Book, Dumbbell, Brain, PenTool } from "lucide-react";
+import { ThemeContext } from "./reusables/ThemeContext.js";
 
-const Dashboard = () => {
+const API_BASE = "http://localhost:3000";
+
+const iconMap = {
+  "Drink water": Droplets,
+  "Read book": Book,
+  Exercise: Dumbbell,
+  Meditate: Brain,
+  Journal: PenTool,
+};
+
+const DashboardContent = () => {
+  const { isDarkMode, themeClasses } = useContext(ThemeContext);
+
   const [focusLevel, setFocusLevel] = useState(0);
   const [selectedMood, setSelectedMood] = useState(null);
+  const [habits, setHabits] = useState([]);
+  const [habitHistory, setHabitHistory] = useState({});
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
-  const [habitHistory, setHabitHistory] = useState({});
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [habits, setHabits] = useState([
-    { id: 1, name: "Drink water", icon: Droplets, completed: false },
-    { id: 2, name: "Read book", icon: Book, completed: false },
-    { id: 3, name: "Exercise", icon: Dumbbell, completed: false },
-    { id: 4, name: "Meditate", icon: Brain, completed: false },
-    { id: 5, name: "Journal", icon: PenTool, completed: false },
-  ]);
+
+  useEffect(() => {
+    const fetchHabits = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/user/habits`);
+        if (!res.ok) throw new Error("Failed to fetch habits");
+        const data = await res.json();
+        const habitsArray = Array.isArray(data) ? data : data.data;
+
+        // Fetch today's completions
+        const completionsRes = await fetch(
+          `${API_BASE}/api/user/habits/completions`
+        );
+        const completionsData = completionsRes.ok
+          ? await completionsRes.json()
+          : [];
+        const completedMap = {};
+        completionsData.forEach((c) => {
+          completedMap[c.habitId] = c.completed;
+        });
+
+        setHabits(
+          Array.isArray(habitsArray)
+            ? habitsArray.map((h) => ({
+                ...h,
+                icon: iconMap[h.name] || Droplets,
+                completed: !!completedMap[h.id],
+              }))
+            : []
+        );
+      } catch (err) {
+        console.warn("Habits endpoint missing or failed:", err);
+        setHabits([]);
+      }
+
+      // Try to fetch streaks, but don't crash if not found
+      try {
+        const statsRes = await fetch(`${API_BASE}/api/user/stats`);
+        if (statsRes.ok) {
+          const stats = await statsRes.json();
+          setCurrentStreak(stats.bestStreak || 0);
+          setLongestStreak(stats.bestStreak || 0);
+        } else {
+          setCurrentStreak(0);
+          setLongestStreak(0);
+        }
+      } catch (err) {
+        console.warn("Stats endpoint missing or failed:", err);
+        setCurrentStreak(0);
+        setLongestStreak(0);
+      }
+    };
+    fetchHabits();
+  }, []);
 
   const getTodayDateString = () => {
     const today = new Date();
@@ -36,53 +84,86 @@ const Dashboard = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const toggleHabit = (habitId) => {
-    setHabits((prevHabits) => {
-      const updatedHabits = prevHabits.map((habit) =>
-        habit.id === habitId ? { ...habit, completed: !habit.completed } : habit
-      );
+  // --- Toggle habit: mark or unmark as completed for today ---
+  const toggleHabit = async (habitId) => {
+    const todayString = getTodayDateString();
+    const habit = habits.find((h) => h.id === habitId);
+    if (!habit) return;
 
-      const allCompleted = updatedHabits.every((habit) => habit.completed);
-      const wasAllCompleted = prevHabits.every((habit) => habit.completed);
-      const todayString = getTodayDateString();
+    // If completed, uncomplete; else, complete
+    const endpoint = habit.completed
+      ? `${API_BASE}/api/habits/${habitId}/uncomplete`
+      : `${API_BASE}/api/habits/${habitId}/complete`;
 
-      if (allCompleted && !wasAllCompleted) {
-        const newStreak = currentStreak + 1;
-        setCurrentStreak(newStreak);
-
-        if (newStreak > longestStreak) {
-          setLongestStreak(newStreak);
-        }
-
-        setHabitHistory((prev) => ({
-          ...prev,
-          [todayString]: "completed",
-        }));
-      } else if (!allCompleted && wasAllCompleted) {
-        setCurrentStreak(0);
-
-        setHabitHistory((prev) => {
-          const newHistory = { ...prev };
-          delete newHistory[todayString];
-          return newHistory;
-        });
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: todayString }),
+      });
+      if (!res.ok) {
+        console.warn("Toggle endpoint failed:", res.status);
       }
+    } catch (err) {
+      console.warn("Toggle endpoint failed:", err);
+    }
 
-      return updatedHabits;
-    });
+    // Re-fetch completions to update UI
+    try {
+      const completionsRes = await fetch(
+        `${API_BASE}/api/user/habits/completions`
+      );
+      const completionsData = completionsRes.ok
+        ? await completionsRes.json()
+        : [];
+      const completedMap = {};
+      completionsData.forEach((c) => {
+        completedMap[c.habitId] = c.completed;
+      });
+      setHabits((prevHabits) =>
+        prevHabits.map((h) =>
+          h.id === habitId
+            ? { ...h, completed: !!completedMap[h.id] }
+            : { ...h, completed: !!completedMap[h.id] }
+        )
+      );
+    } catch (err) {
+      console.log(err.message);
+      setHabits((prevHabits) =>
+        prevHabits.map((h) =>
+          h.id === habitId ? { ...h, completed: !h.completed } : h
+        )
+      );
+    }
+
+    const updatedHabits = habits.map((h) =>
+      h.id === habitId ? { ...h, completed: !h.completed } : h
+    );
+    const allCompleted = updatedHabits.every((h) => h.completed);
+    if (allCompleted) {
+      setHabitHistory((prev) => ({
+        ...prev,
+        [todayString]: "completed",
+      }));
+
+      // Try to fetch streaks, but don't crash if not found
+      try {
+        const statsRes = await fetch(`${API_BASE}/api/user/stats`);
+        if (statsRes.ok) {
+          const stats = await statsRes.json();
+          setCurrentStreak(stats.bestStreak || 0);
+          setLongestStreak(stats.bestStreak || 0);
+        } else {
+          setCurrentStreak(0);
+          setLongestStreak(0);
+        }
+      } catch (err) {
+        console.warn("Stats endpoint missing or failed:", err);
+        setCurrentStreak(0);
+        setLongestStreak(0);
+      }
+    }
   };
-
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
-  const sidebarItems = [
-    { name: "Dashboard", icon: BarChart3, active: true },
-    { name: "Profile", icon: User, active: false },
-    { name: "My Habits", icon: Target, active: false },
-    { name: "Progress", icon: BarChart3, active: false },
-    { name: "About", icon: Info, active: false },
-  ];
 
   const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
 
@@ -122,101 +203,10 @@ const Dashboard = () => {
     }
   };
 
-  const themeClasses = {
-    mainBg: isDarkMode ? "bg-gray-900" : "bg-gray-50",
-    sidebarBg: isDarkMode ? "bg-gray-800" : "bg-white",
-    cardBg: isDarkMode ? "bg-gray-800" : "bg-white",
-    text: isDarkMode ? "text-white" : "text-gray-900",
-    textSecondary: isDarkMode ? "text-gray-300" : "text-gray-600",
-    textMuted: isDarkMode ? "text-gray-400" : "text-gray-500",
-    border: isDarkMode ? "border-gray-700" : "border-gray-200",
-    hoverBg: isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-50",
-    habitItemHoverBg: isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-50",
-    iconBg: isDarkMode ? "bg-indigo-900" : "bg-indigo-50",
-  };
+  const iconBg = isDarkMode ? "bg-indigo-900" : "bg-indigo-50";
 
   return (
     <div className={`flex h-screen ${themeClasses.mainBg}`}>
-      {/* Sidebar */}
-      <div
-        className={`w-64 ${themeClasses.sidebarBg} shadow-sm border-r ${themeClasses.border}`}
-      >
-        <div className="p-6">
-          {/* User Profile */}
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xl font-semibold mb-3">
-              G
-            </div>
-            <h2 className={`text-lg font-semibold ${themeClasses.text}`}>
-              Welcome, Gustav
-            </h2>
-            <div
-              className={`flex items-center gap-4 mt-2 text-sm ${themeClasses.textMuted}`}
-            >
-              <button
-                className={`flex items-center gap-1 ${
-                  isDarkMode ? "hover:text-gray-200" : "hover:text-gray-700"
-                }`}
-              >
-                <Settings size={14} />
-                Settings
-              </button>
-              <span>•</span>
-              <button
-                className={`flex items-center gap-1 ${
-                  isDarkMode ? "hover:text-gray-200" : "hover:text-gray-700"
-                }`}
-              >
-                <LogOut size={14} />
-                Sign Out
-              </button>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="space-y-2">
-            {sidebarItems.map((item) => (
-              <button
-                key={item.name}
-                className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-left transition-colors ${
-                  item.active
-                    ? `${
-                        isDarkMode
-                          ? "bg-indigo-900 text-indigo-300"
-                          : "bg-indigo-50 text-indigo-700"
-                      } border-l-4 border-indigo-700`
-                    : `${themeClasses.textSecondary} ${themeClasses.hoverBg} ${
-                        isDarkMode ? "hover:text-white" : "hover:text-gray-900"
-                      }`
-                }`}
-              >
-                <item.icon size={18} />
-                {item.name}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Dark mode toggle */}
-        <div className="absolute bottom-6 left-6 flex items-center gap-2">
-          <button
-            onClick={toggleDarkMode}
-            className={`w-10 h-6 rounded-full relative transition-colors ${
-              isDarkMode ? "bg-indigo-500" : "bg-gray-300"
-            }`}
-          >
-            <div
-              className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${
-                isDarkMode ? "translate-x-5" : "translate-x-1"
-              }`}
-            ></div>
-          </button>
-          <span className={`text-sm ${themeClasses.textSecondary}`}>
-            {isDarkMode ? "Dark" : "Light"}
-          </span>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
         <div className="p-8">
@@ -239,11 +229,19 @@ const Dashboard = () => {
                   {habits.map((habit) => (
                     <div
                       key={habit.id}
-                      className={`flex items-center gap-4 p-3 rounded-lg ${themeClasses.habitItemHoverBg} cursor-pointer`}
+                      className={`flex items-center gap-4 p-3 rounded-lg cursor-pointer
+                        transition-all duration-200
+                        ${
+                          isDarkMode
+                            ? "hover:bg-gray-700 active:bg-gray-800"
+                            : "hover:bg-gray-50 active:bg-gray-100"
+                        }
+                        focus:outline-none focus:ring-2 focus:ring-indigo-400`}
                       onClick={() => toggleHabit(habit.id)}
+                      tabIndex={0}
                     >
                       <div
-                        className={`w-10 h-10 ${themeClasses.iconBg} rounded-full flex items-center justify-center`}
+                        className={`w-10 h-10 ${iconBg} rounded-full flex items-center justify-center transition-all duration-200`}
                       >
                         <habit.icon
                           size={18}
@@ -256,13 +254,15 @@ const Dashboard = () => {
                         {habit.name}
                       </span>
                       <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
-                          habit.completed
-                            ? "bg-green-500"
-                            : isDarkMode
-                            ? "bg-gray-600"
-                            : "bg-gray-200"
-                        }`}
+                        className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200
+                          ${
+                            habit.completed
+                              ? "bg-green-500"
+                              : isDarkMode
+                              ? "bg-gray-600"
+                              : "bg-gray-200"
+                          }
+                          ${habit.completed ? "shadow-md" : ""}`}
                       >
                         {habit.completed && (
                           <svg
@@ -418,9 +418,9 @@ const Dashboard = () => {
 
               {/* Weekday headers */}
               <div className="grid grid-cols-7 gap-1 mb-2">
-                {weekdays.map((day) => (
+                {weekdays.map((day, idx) => (
                   <div
-                    key={day}
+                    key={`${day}-${idx}`}
                     className={`text-xs ${themeClasses.textMuted} text-center font-medium py-1 flex items-center justify-center`}
                   >
                     {day}
@@ -459,7 +459,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .slider::-webkit-slider-thumb {
           appearance: none;
           width: 20px;
@@ -483,6 +483,10 @@ const Dashboard = () => {
       `}</style>
     </div>
   );
+};
+
+const Dashboard = () => {
+  return <DashboardContent />;
 };
 
 export default Dashboard;
