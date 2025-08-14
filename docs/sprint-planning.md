@@ -33,3 +33,10 @@ Build a minimal viable web app for Student Habit Tracker focusing on:
 - Prioritize desktop web experience
 - Keep design minimal and fast-loading
 - Use Azure Boards for task tracking and Agile workflow
+
+---
+
+## Sprint 2 — Dates: 2025-07-14 to 2025-08-14
+
+- Nothing to add here, everything is done and dusted and the planning from last sprint still stands.
+- Make sure the site is done within 4 weeks.

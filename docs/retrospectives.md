@@ -22,3 +22,21 @@ _This file will be used to document reflections and lessons learned after each s
 
 - From here It's very likely that the project will see an improvement in most of the areas, the main improvement should be to finish the Sprint quicker.
 - Not because It's needed but because It's possible due to the generous amount of time given due to the lack of knowledge beforehand.
+
+---
+
+## Sprint 2 — Dates: 2025-07-14 to 2025-08-14
+
+### What Went Well
+
+- The developing went well with part vibe coding and reviewing the code generated.
+- Designer has been working more on creating wireframes and making them possible to navigate on Figma, still feels like he can improve and will keep working.
+- The time span given gave a calming vibe which made it easier to focus on small parts and making sure the site looks aesthetically pleasing.
+
+### What Didn’t Go Well
+
+- Everything went surprisingly smooth this Sprint, main focus has been on developing the site which went according to plan.
+
+### Action Items / Improvements for Next Sprint
+
+- Make sure the site is done by next sprint, a deadline is set for 4 weeks since the project owner will be mostly absent with other studies.
