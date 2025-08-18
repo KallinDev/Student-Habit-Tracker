@@ -132,11 +132,23 @@ const DashboardContent = () => {
 
         if (completionsRes.ok) {
           const completions = await completionsRes.json();
-          const allCompleted =
-            completions.length > 0 && completions.every((c) => c.completed);
-          if (allCompleted) {
-            history[dateString] = "completed";
+          if (completions.length === 0) {
+            history[dateString] = "empty";
+          } else {
+            const completedCount = completions.filter(
+              (c) => c.completed
+            ).length;
+            const totalCount = completions.length;
+            if (completedCount === totalCount && totalCount > 0) {
+              history[dateString] = "completed";
+            } else if (completedCount > 0) {
+              history[dateString] = "partial";
+            } else {
+              history[dateString] = "empty";
+            }
           }
+        } else {
+          history[dateString] = "empty";
         }
       }
 
@@ -311,8 +323,7 @@ const DashboardContent = () => {
       const day = String(date.getDate()).padStart(2, "0");
       const dateString = `${year}-${month}-${day}`;
 
-      const status =
-        habitHistory[dateString] === "completed" ? "completed" : "empty";
+      const status = habitHistory[dateString] || "empty";
 
       days.push({ date, status, dayOfWeek, dateString });
     }
@@ -326,12 +337,30 @@ const DashboardContent = () => {
     switch (status) {
       case "completed":
         return "bg-green-500";
+      case "partial":
+        return "bg-yellow-400";
       default:
         return isDarkMode ? "bg-gray-700" : "bg-gray-200";
     }
   };
 
   const iconBg = isDarkMode ? "bg-indigo-900" : "bg-indigo-50";
+
+  // Helper to get month label for the calendar (English, capitalized)
+  const getMonthLabel = () => {
+    if (calendarData.length === 0) return "";
+    const first = calendarData[0].date;
+    const last = calendarData[calendarData.length - 1].date;
+    const firstMonth = first.toLocaleString("en-US", { month: "long" });
+    const lastMonth = last.toLocaleString("en-US", { month: "long" });
+    const year = last.getFullYear();
+    return firstMonth === lastMonth
+      ? `${capitalize(firstMonth)} ${year}`
+      : `${capitalize(firstMonth)} – ${capitalize(lastMonth)} ${year}`;
+  };
+
+  // Capitalize helper
+  const capitalize = (str) => str.charAt(0).toUpperCase() + str.slice(1);
 
   return (
     <div className={`flex h-screen ${themeClasses.mainBg}`}>
@@ -546,27 +575,31 @@ const DashboardContent = () => {
               </h2>
               {selectedMood || focusLevel ? (
                 <div
-                  className={`mt-2 p-4 rounded-xl text-center font-medium ${themeClasses.text} text-2xl`}
+                  className={`mt-2 p-4 rounded-xl text-center font-medium ${themeClasses.text} text-3xl`}
                   style={{
-                    fontFamily: "'Georgia', 'Times New Roman', 'serif'",
+                    fontFamily:
+                      "'Playfair Display', 'Georgia', 'Times New Roman', serif",
                     fontStyle: "italic",
+                    letterSpacing: "0.01em",
                   }}
                 >
-                  <span className="text-4xl leading-none align-top">“</span>
+                  <span className="text-5xl leading-none align-top">“</span>
                   {getMotivationMessage()}
-                  <span className="text-4xl leading-none align-bottom">”</span>
+                  <span className="text-5xl leading-none align-bottom">”</span>
                 </div>
               ) : (
                 <div
-                  className={`mt-2 p-4 rounded-xl text-center font-medium ${themeClasses.text} text-2xl`}
+                  className={`mt-2 p-4 rounded-xl text-center font-medium ${themeClasses.text} text-3xl`}
                   style={{
-                    fontFamily: "'Georgia', 'Times New Roman', 'serif'",
+                    fontFamily:
+                      "'Playfair Display', 'Georgia', 'Times New Roman', serif",
                     fontStyle: "italic",
+                    letterSpacing: "0.01em",
                   }}
                 >
-                  <span className="text-4xl leading-none align-top">“</span>
+                  <span className="text-5xl leading-none align-top">“</span>
                   Set your mood and focus level to get a motivational quote!
-                  <span className="text-4xl leading-none align-bottom">”</span>
+                  <span className="text-5xl leading-none align-bottom">”</span>
                 </div>
               )}
             </div>
@@ -575,10 +608,14 @@ const DashboardContent = () => {
             <div
               className={`${themeClasses.cardBg} rounded-2xl shadow-sm border ${themeClasses.border} p-6`}
             >
-              <h2 className={`text-xl font-semibold ${themeClasses.text} mb-6`}>
+              <h2 className={`text-xl font-semibold ${themeClasses.text} mb-2`}>
                 Habit History
               </h2>
-
+              <div
+                className={`mb-4 text-center font-medium ${themeClasses.text}`}
+              >
+                {getMonthLabel()}
+              </div>
               {/* Weekday headers */}
               <div className="grid grid-cols-7 gap-1 mb-2">
                 {weekdays.map((day, idx) => (
@@ -603,19 +640,34 @@ const DashboardContent = () => {
                   )
                 )}
 
-                {calendarData.map((day) => (
-                  <div
-                    key={day.dateString}
-                    className={`w-8 h-8 rounded ${getCalendarColor(
-                      day.status
-                    )} hover:opacity-80 cursor-pointer flex items-center justify-center mx-auto`}
-                    title={`${day.date.toLocaleDateString()}: ${
-                      day.status === "completed"
-                        ? "All habits completed!"
-                        : "No completion"
-                    }`}
-                  />
-                ))}
+                {calendarData.map((day) => {
+                  const isToday = day.dateString === getTodayDateString();
+                  return (
+                    <div
+                      key={day.dateString}
+                      className={`w-8 h-8 rounded flex items-center justify-center mx-auto
+                        ${getCalendarColor(day.status)}
+                        hover:opacity-80 cursor-pointer
+                        ${isToday ? "ring-2 ring-indigo-400" : ""}
+                      `}
+                      title={`${day.date.toLocaleDateString()}: ${
+                        day.status === "completed"
+                          ? "All habits completed!"
+                          : day.status === "partial"
+                          ? "Some habits completed"
+                          : "No habits completed"
+                      }`}
+                    >
+                      <span
+                        className={`text-xs font-semibold ${
+                          isDarkMode ? "text-white" : "text-gray-700"
+                        }`}
+                      >
+                        {day.date.getDate()}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -623,6 +675,7 @@ const DashboardContent = () => {
       </div>
 
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&display=swap');
         .slider::-webkit-slider-thumb {
           appearance: none;
           width: 20px;
