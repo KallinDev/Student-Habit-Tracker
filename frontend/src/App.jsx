@@ -10,6 +10,9 @@ import Profile from "./components/Profile";
 import Sidebar from "./components/reusables/Sidebar.jsx";
 import { ThemeProvider } from "./components/reusables/ThemeProvider.jsx";
 import Habits from "./components/Habits.jsx";
+import AddHabits from "./components/AddHabits.jsx";
+import Progress from "./components/Progress.jsx";
+import About from "./components/About.jsx";
 
 const Layout = () => {
   const [firstName] = useState("Gustav");
@@ -32,6 +35,9 @@ const App = () => {
             <Route path="/" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/habits" element={<Habits />} />
+            <Route path="/add-habit" element={<AddHabits />} />
+            <Route path="/progress" element={<Progress />} />
+            <Route path="/about" element={<About />} />
           </Route>
         </Routes>
       </Router>

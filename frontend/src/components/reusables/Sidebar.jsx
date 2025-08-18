@@ -1,13 +1,23 @@
-import React, { useContext, useLayoutEffect, useState, useRef } from "react";
+import React, {
+  useContext,
+  useLayoutEffect,
+  useState,
+  useRef,
+  useEffect,
+} from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Settings, LogOut, User, BarChart3, Target, Info } from "lucide-react";
 import { ThemeContext } from "./ThemeContext.js";
 
-const Sidebar = ({ firstName }) => {
+// Listen for profile updates across tabs/components
+const PROFILE_UPDATED_EVENT = "profileUpdated";
+
+const Sidebar = () => {
   const { isDarkMode, toggleTheme, themeClasses } = useContext(ThemeContext);
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Sidebar navigation items
   const sidebarItems = [
     { name: "Dashboard", icon: BarChart3, path: "/" },
     { name: "Profile", icon: User, path: "/profile" },
@@ -49,6 +59,58 @@ const Sidebar = ({ firstName }) => {
     navigate(path);
   };
 
+  // --- Fetch user profile for sidebar ---
+  const [firstName, setFirstName] = useState("");
+  const [profileImage, setProfileImage] = useState("");
+
+  // Fetch profile data
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch("/api/user/profile", {
+        headers: { "user-id": "default_user" },
+      });
+      if (!res.ok) throw new Error("Failed to fetch profile");
+      const data = await res.json();
+      setFirstName(data.firstName || "User");
+      setProfileImage(data.profileImage || "");
+    } catch {
+      setFirstName("User");
+      setProfileImage("");
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+
+    // Listen for profile updates (from Profile.jsx)
+    const handler = () => fetchProfile();
+    window.addEventListener(PROFILE_UPDATED_EVENT, handler);
+
+    return () => {
+      window.removeEventListener(PROFILE_UPDATED_EVENT, handler);
+    };
+  }, []);
+
+  // Listen for localStorage changes (cross-tab instant update)
+  useEffect(() => {
+    const storageHandler = (e) => {
+      if (e.key === "profileUpdated") {
+        fetchProfile();
+      }
+    };
+    window.addEventListener("storage", storageHandler);
+    return () => window.removeEventListener("storage", storageHandler);
+  }, []);
+
+  // Default profile: purple circle with first initial
+  const renderDefaultProfile = () => (
+    <div className="w-full h-full flex items-center justify-center bg-indigo-500">
+      <span className="text-white text-xl font-bold">
+        {firstName ? firstName.charAt(0) : "U"}
+      </span>
+    </div>
+  );
+
   return (
     <div
       className={`w-64 ${themeClasses.sidebarBg} shadow-sm border-r ${themeClasses.border} relative`}
@@ -56,11 +118,23 @@ const Sidebar = ({ firstName }) => {
       <div className="p-6">
         {/* Profile in Sidebar */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-indigo-500 rounded-full flex items-center justify-center text-white text-xl font-semibold mb-3">
-            {firstName?.charAt(0) || "?"}
+          <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center mb-3 border-2 border-indigo-500 bg-indigo-500">
+            {profileImage ? (
+              <img
+                src={
+                  profileImage.startsWith("data:image")
+                    ? profileImage
+                    : `data:image/jpeg;base64,${profileImage}`
+                }
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              renderDefaultProfile()
+            )}
           </div>
           <h2 className={`text-lg font-semibold ${themeClasses.text}`}>
-            Welcome, {firstName || "User"}
+            Welcome, {firstName}
           </h2>
           <div
             className={`flex items-center gap-4 mt-2 text-sm ${themeClasses.textMuted}`}

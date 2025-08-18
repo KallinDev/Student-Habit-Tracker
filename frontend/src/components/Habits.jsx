@@ -1,67 +1,118 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useState, useRef } from "react";
 import {
   Droplets,
   Book,
   Dumbbell,
   Brain,
   PenTool,
+  Coffee,
+  Bed,
+  Leaf,
+  Calculator,
+  Music,
+  Apple,
   Plus,
   Edit2,
   Trash2,
 } from "lucide-react";
 import { ThemeContext } from "./reusables/ThemeContext.js";
+import { useNavigate } from "react-router-dom";
 
-// Map habit names to icons and colors for display
-const habitIconMap = {
-  "Drink water": { icon: Droplets, color: "text-blue-500" },
-  "Read book": { icon: Book, color: "text-purple-500" },
-  Exercise: { icon: Dumbbell, color: "text-red-500" },
-  Meditate: { icon: Brain, color: "text-green-500" },
-  Journal: { icon: PenTool, color: "text-orange-500" },
+// Change this to your backend port if needed
+const API_BASE = "http://localhost:3000";
+
+const iconMap = {
+  Droplets,
+  Coffee,
+  Book,
+  Dumbbell,
+  Brain,
+  PenTool,
+  Bed,
+  Leaf,
+  Calculator,
+  Music,
+  Apple,
 };
 
-// Custom hook for modal animation (fade-in-up and fade-out-down)
-function useModalAnimation(isOpen) {
-  const [show, setShow] = useState(isOpen);
-  const [animClass, setAnimClass] = useState(isOpen ? "modal-in" : "modal-out");
+const habitColorMap = {
+  "Drink water": "text-blue-500",
+  "Read book": "text-purple-500",
+  Exercise: "text-red-500",
+  Meditate: "text-green-500",
+  Journal: "text-orange-500",
+};
 
-  useEffect(() => {
-    if (isOpen) {
-      setShow(true);
-      setTimeout(() => setAnimClass("modal-in"), 10); // trigger animation
-    } else {
-      setAnimClass("modal-out");
-      const timeout = setTimeout(() => setShow(false), 300);
-      return () => clearTimeout(timeout);
-    }
-  }, [isOpen]);
+const iconOptions = [
+  { icon: "Droplets", label: "Water" },
+  { icon: "Coffee", label: "Coffee" },
+  { icon: "Book", label: "Book" },
+  { icon: "Dumbbell", label: "Exercise" },
+  { icon: "Brain", label: "Meditate" },
+  { icon: "PenTool", label: "Journal" },
+  { icon: "Bed", label: "Sleep" },
+  { icon: "Leaf", label: "Nature" },
+  { icon: "Calculator", label: "Math" },
+  { icon: "Music", label: "Music" },
+  { icon: "Apple", label: "Fruit" },
+];
 
-  return [show, animClass, setAnimClass, setShow];
+const colorOptions = [
+  { name: "Blue", className: "text-blue-500", hex: "#3b82f6" },
+  { name: "Purple", className: "text-purple-500", hex: "#a78bfa" },
+  { name: "Red", className: "text-red-500", hex: "#ef4444" },
+  { name: "Green", className: "text-green-500", hex: "#22c55e" },
+  { name: "Orange", className: "text-orange-500", hex: "#f97316" },
+  { name: "Yellow", className: "text-yellow-500", hex: "#eab308" },
+  { name: "Pink", className: "text-pink-500", hex: "#ec4899" },
+  { name: "Gray", className: "text-gray-500", hex: "#6b7280" },
+];
+
+const unitOptions = [
+  "glasses",
+  "cups",
+  "pages",
+  "minutes",
+  "times",
+  "sessions",
+  "entries",
+  "chapters",
+  "steps",
+];
+
+// Modal animation CSS
+const modalAnimationStyles = `
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
-
-// Modal animation classes for Tailwind (add to your global CSS or Tailwind config)
-if (
-  typeof window !== "undefined" &&
-  !document.getElementById("modal-anim-css")
-) {
-  const style = document.createElement("style");
-  style.id = "modal-anim-css";
-  style.innerHTML = `
-    .modal-in {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-      pointer-events: auto;
-      transition: opacity 0.3s cubic-bezier(.4,0,.2,1), transform 0.3s cubic-bezier(.4,0,.2,1);
-    }
-    .modal-out {
-      opacity: 0;
-      transform: translateY(32px) scale(0.95);
-      pointer-events: none;
-      transition: opacity 0.3s cubic-bezier(.4,0,.2,1), transform 0.3s cubic-bezier(.4,0,.2,1);
-    }
-  `;
-  document.head.appendChild(style);
+@keyframes fadeOutDown {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.98);
+  }
 }
+.modal-in {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  animation: fadeInUp 0.35s cubic-bezier(.4,0,.2,1) both;
+}
+.modal-out {
+  opacity: 0;
+  transform: translateY(40px) scale(0.98);
+  animation: fadeOutDown 0.3s cubic-bezier(.4,0,.2,1) both;
+}
+`;
 
 const HabitsContent = () => {
   const { isDarkMode, themeClasses } = useContext(ThemeContext);
@@ -69,35 +120,85 @@ const HabitsContent = () => {
   const [editingHabit, setEditingHabit] = useState(null);
   const [editForm, setEditForm] = useState({
     name: "",
-    description: "",
+    icon: "Droplets",
+    iconColor: colorOptions[0].className,
     frequency: "daily",
+    dailyGoal: "",
+    unit: unitOptions[0],
+    description: "",
+    reminderEnabled: false,
+    reminderTime: "09:00",
   });
+
+  // Inject animation styles once
+  const styleRef = useRef(null);
+  useEffect(() => {
+    if (!styleRef.current) {
+      const style = document.createElement("style");
+      style.innerHTML = modalAnimationStyles;
+      document.head.appendChild(style);
+      styleRef.current = style;
+    }
+    return () => {
+      if (styleRef.current) {
+        document.head.removeChild(styleRef.current);
+        styleRef.current = null;
+      }
+    };
+  }, []);
 
   // Delete modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [habitToDelete, setHabitToDelete] = useState(null);
 
-  // Animation helpers
-  const [showEditModal, editAnimClass, setEditAnimClass] = useModalAnimation(
+  // Animation hooks with show value exposed
+  function useModalAnimation(isOpen) {
+    const [show, setShow] = useState(isOpen);
+    const [animClass, setAnimClass] = useState(
+      isOpen ? "modal-in" : "modal-out"
+    );
+    useEffect(() => {
+      if (isOpen) {
+        setShow(true);
+        setAnimClass("modal-in"); // Set immediately, no timeout
+      } else if (show) {
+        setAnimClass("modal-out");
+        const timeout = setTimeout(() => setShow(false), 300);
+        return () => clearTimeout(timeout);
+      }
+    }, [isOpen, show]);
+    return [show, animClass, setAnimClass, setShow];
+  }
+
+  // Use show value for rendering modals
+  const [showEdit, editAnimClass, setEditAnimClass] = useModalAnimation(
     !!editingHabit
   );
-  const [showDeleteAnim, deleteAnimClass, setDeleteAnimClass] =
-    useModalAnimation(showDeleteModal && habitToDelete);
+  const [showDelete, deleteAnimClass, setDeleteAnimClass] = useModalAnimation(
+    showDeleteModal && habitToDelete
+  );
+
+  const navigate = useNavigate();
 
   // Fetch habits
   const fetchHabits = async () => {
     try {
-      const res = await fetch("/api/user/habits");
+      const res = await fetch(`${API_BASE}/api/user/habits`);
       const data = await res.json();
       const habitsWithRates = (Array.isArray(data) ? data : []).map((h) => ({
         ...h,
-        icon: habitIconMap[h.name]?.icon || Droplets,
-        iconColor: habitIconMap[h.name]?.color || "text-blue-500",
+        icon: h.icon || getLegacyIconName(h.name),
+        color: iconMap[h.icon] ? "" : habitColorMap[h.name] || "text-blue-500",
+        iconColor: h.iconColor || h.icon_color || "",
         frequency: h.frequency || "Daily",
         currentStreak: h.currentStreak ?? h.current_streak ?? 0,
         bestStreak: h.bestStreak ?? h.best_streak ?? 0,
         successRate: h.successRate ?? 0,
         description: h.description || "",
+        dailyGoal: h.dailyGoal ?? h.daily_goal ?? "",
+        unit: h.unit || unitOptions[0],
+        reminderEnabled: h.reminderEnabled ?? h.reminder_enabled ?? false,
+        reminderTime: h.reminderTime ?? h.reminder_time ?? "09:00",
       }));
       setHabits(habitsWithRates);
     } catch (error) {
@@ -106,8 +207,20 @@ const HabitsContent = () => {
     }
   };
 
+  function getLegacyIconName(name) {
+    if (name === "Drink water") return "Droplets";
+    if (name === "Read book") return "Book";
+    if (name === "Exercise") return "Dumbbell";
+    if (name === "Meditate") return "Brain";
+    if (name === "Journal") return "PenTool";
+    return "Droplets";
+  }
+
   useEffect(() => {
     fetchHabits();
+    const handleFocus = () => fetchHabits();
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
   // Handle edit button click
@@ -115,14 +228,36 @@ const HabitsContent = () => {
     setEditingHabit(habit);
     setEditForm({
       name: habit.name,
-      description: habit.description || "",
+      icon: habit.icon || "Droplets",
+      iconColor:
+        habit.iconColor || habit.icon_color || colorOptions[0].className,
       frequency: habit.frequency || "daily",
+      dailyGoal: habit.dailyGoal ?? habit.daily_goal ?? "",
+      unit: habit.unit || unitOptions[0],
+      description: habit.description || "",
+      reminderEnabled: habit.reminderEnabled ?? habit.reminder_enabled ?? false,
+      reminderTime: habit.reminderTime ?? habit.reminder_time ?? "09:00",
     });
   };
 
   // Handle edit form change
   const handleEditFormChange = (e) => {
-    setEditForm({ ...editForm, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setEditForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  // Icon/color/unit handlers
+  const handleEditIconSelect = (iconName) => {
+    setEditForm((prev) => ({
+      ...prev,
+      icon: iconName,
+    }));
+  };
+  const handleEditColorSelect = (colorClass) => {
+    setEditForm((prev) => ({ ...prev, iconColor: colorClass }));
   };
 
   // Handle edit form submit
@@ -130,15 +265,36 @@ const HabitsContent = () => {
     e.preventDefault();
     if (!editingHabit) return;
     try {
-      await fetch(`/api/habits/${editingHabit.id}`, {
+      const payload = {
+        name: editForm.name,
+        icon: editForm.icon,
+        iconColor: editForm.iconColor,
+        frequency: editForm.frequency,
+        dailyGoal: Number(editForm.dailyGoal),
+        unit: editForm.unit,
+        description: editForm.description,
+        reminder_enabled: editForm.reminderEnabled,
+        reminder_time: editForm.reminderTime,
+      };
+      console.log("Submitting PUT payload:", payload); // Debug log
+
+      const res = await fetch(`${API_BASE}/api/habits/${editingHabit.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify(payload),
       });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error("PUT error:", res.status, errorText);
+        alert(`Failed to update habit: ${errorText}`);
+      }
+
       setEditingHabit(null);
       fetchHabits();
     } catch (error) {
       console.log(error);
+      alert("Failed to update habit: " + error.message);
     }
   };
 
@@ -152,7 +308,9 @@ const HabitsContent = () => {
   const confirmDelete = async () => {
     if (!habitToDelete) return;
     try {
-      await fetch(`/api/habits/${habitToDelete.id}`, { method: "DELETE" });
+      await fetch(`${API_BASE}/api/habits/${habitToDelete.id}`, {
+        method: "DELETE",
+      });
       setShowDeleteModal(false);
       setHabitToDelete(null);
       fetchHabits();
@@ -178,6 +336,10 @@ const HabitsContent = () => {
     }, 300);
   };
 
+  const handleAddHabit = () => {
+    navigate("/add-habit");
+  };
+
   return (
     <div className={`min-h-screen ${themeClasses.mainBg} relative`}>
       <div className="p-8">
@@ -190,128 +352,143 @@ const HabitsContent = () => {
 
         {/* Habits Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {habits.map((habit) => (
-            <div
-              key={habit.id || habit.name}
-              className={`${themeClasses.cardBg} rounded-xl shadow-sm border ${themeClasses.border} p-6 relative`}
-            >
-              {/* Edit and Delete buttons */}
-              <div className="absolute top-4 right-4 flex gap-2">
-                <button
-                  className={`p-1.5 rounded-lg btn-base transition-all duration-200 ${
-                    isDarkMode
-                      ? "bg-gray-700 hover:bg-gray-600 active:bg-gray-500"
-                      : "bg-gray-100 hover:bg-gray-200 active:bg-gray-300"
-                  }`}
-                  onClick={() => handleEditClick(habit)}
-                  aria-label="Edit"
-                  type="button"
-                >
-                  <Edit2
-                    size={16}
-                    className={`transition-colors duration-150 ${
-                      isDarkMode ? "text-gray-300" : "text-gray-500"
-                    }`}
-                  />
-                </button>
-                <button
-                  className={`p-1.5 rounded-lg btn-base transition-all duration-200 ${
-                    isDarkMode
-                      ? "bg-gray-700 hover:bg-red-700 active:bg-red-600"
-                      : "bg-red-50 hover:bg-red-100 active:bg-red-200"
-                  }`}
-                  onClick={() => handleDeleteClick(habit)}
-                  aria-label="Delete"
-                  type="button"
-                >
-                  <Trash2
-                    size={16}
-                    className={`transition-colors duration-150 ${
-                      isDarkMode ? "text-red-300" : "text-red-500"
-                    }`}
-                  />
-                </button>
-              </div>
-
-              {/* Icon */}
+          {habits.map((habit) => {
+            const IconComponent = iconMap[habit.icon] || Droplets;
+            const iconColorClass =
+              habit.iconColor && habit.iconColor !== ""
+                ? habit.iconColor
+                : habit.color && habit.color !== ""
+                ? habit.color
+                : isDarkMode
+                ? "text-gray-300"
+                : "text-gray-500";
+            return (
               <div
-                className={`w-12 h-12 rounded-full ${
-                  isDarkMode ? "bg-gray-700" : "bg-gray-100"
-                } flex items-center justify-center mb-4`}
+                key={habit.id || habit.name}
+                className={`${themeClasses.cardBg} rounded-xl shadow-sm border ${themeClasses.border} p-6 relative`}
               >
-                {habit.icon && (
-                  <habit.icon size={24} className={habit.iconColor} />
-                )}
-              </div>
-
-              {/* Habit name */}
-              <h3 className={`text-lg font-medium ${themeClasses.text} mb-1`}>
-                {habit.name}
-              </h3>
-              {/* Habit description */}
-              {habit.description && (
-                <p className={`text-sm ${themeClasses.textSecondary} mb-4`}>
-                  {habit.description}
-                </p>
-              )}
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div>
-                  <div className={`text-2xl font-bold ${themeClasses.text}`}>
-                    {habit.currentStreak}
-                  </div>
-                  <div
-                    className={`text-xs ${themeClasses.textMuted} uppercase tracking-wide`}
+                {/* Edit and Delete buttons */}
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <button
+                    className={`p-1.5 rounded-lg btn-base transition-all duration-200 ${
+                      isDarkMode
+                        ? "bg-gray-700 hover:bg-gray-600 active:bg-gray-500"
+                        : "bg-gray-100 hover:bg-gray-200 active:bg-gray-300"
+                    }`}
+                    onClick={() => handleEditClick(habit)}
+                    aria-label="Edit"
+                    type="button"
                   >
-                    Current Streak
-                  </div>
-                </div>
-                <div>
-                  <div className={`text-2xl font-bold ${themeClasses.text}`}>
-                    {habit.bestStreak}
-                  </div>
-                  <div
-                    className={`text-xs ${themeClasses.textMuted} uppercase tracking-wide`}
+                    <Edit2
+                      size={16}
+                      className={`transition-colors duration-150 ${
+                        isDarkMode ? "text-gray-300" : "text-gray-500"
+                      }`}
+                    />
+                  </button>
+                  <button
+                    className={`p-1.5 rounded-lg btn-base transition-all duration-200 ${
+                      isDarkMode
+                        ? "bg-gray-700 hover:bg-red-700 active:bg-red-600"
+                        : "bg-red-50 hover:bg-red-100 active:bg-red-200"
+                    }`}
+                    onClick={() => handleDeleteClick(habit)}
+                    aria-label="Delete"
+                    type="button"
                   >
-                    Best Streak
-                  </div>
+                    <Trash2
+                      size={16}
+                      className={`transition-colors duration-150 ${
+                        isDarkMode ? "text-red-300" : "text-red-500"
+                      }`}
+                    />
+                  </button>
                 </div>
-                <div>
-                  <div className={`text-2xl font-bold ${themeClasses.text}`}>
-                    {habit.successRate}%
-                  </div>
-                  <div
-                    className={`text-xs ${themeClasses.textMuted} uppercase tracking-wide`}
-                  >
-                    Success Rate
-                  </div>
-                </div>
-              </div>
 
-              {/* Frequency */}
-              <div className={`text-sm ${themeClasses.textSecondary} mb-3`}>
-                {habit.frequency}
-              </div>
-
-              {/* Progress bar */}
-              <div
-                className={`w-full h-2 rounded-full ${
-                  isDarkMode ? "bg-gray-700" : "bg-gray-200"
-                }`}
-              >
+                {/* Icon */}
                 <div
-                  className="h-full bg-green-500 rounded-full transition-all duration-300"
-                  style={{ width: `${habit.successRate}%` }}
-                />
+                  className={`w-12 h-12 rounded-full ${
+                    isDarkMode ? "bg-gray-700" : "bg-gray-100"
+                  } flex items-center justify-center mb-4`}
+                >
+                  <IconComponent size={24} className={iconColorClass} />
+                </div>
+
+                {/* Habit name */}
+                <h3 className={`text-lg font-medium ${themeClasses.text} mb-1`}>
+                  {habit.name}
+                </h3>
+                {/* Habit description */}
+                {habit.description && (
+                  <p className={`text-sm ${themeClasses.textSecondary} mb-4`}>
+                    {habit.description}
+                  </p>
+                )}
+
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <div className={`text-2xl font-bold ${themeClasses.text}`}>
+                      {habit.currentStreak}
+                    </div>
+                    <div
+                      className={`text-xs ${themeClasses.textMuted} uppercase tracking-wide`}
+                    >
+                      Current Streak
+                    </div>
+                  </div>
+                  <div>
+                    <div className={`text-2xl font-bold ${themeClasses.text}`}>
+                      {habit.bestStreak}
+                    </div>
+                    <div
+                      className={`text-xs ${themeClasses.textMuted} uppercase tracking-wide`}
+                    >
+                      Best Streak
+                    </div>
+                  </div>
+                  <div>
+                    <div className={`text-2xl font-bold ${themeClasses.text}`}>
+                      {habit.successRate}%
+                    </div>
+                    <div
+                      className={`text-xs ${themeClasses.textMuted} uppercase tracking-wide`}
+                    >
+                      Success Rate
+                    </div>
+                  </div>
+                </div>
+
+                {/* Frequency */}
+                <div className={`text-sm ${themeClasses.textSecondary} mb-3`}>
+                  {habit.frequency}
+                </div>
+
+                {/* Progress bar */}
+                <div
+                  className={`w-full h-2 rounded-full ${
+                    isDarkMode ? "bg-gray-700" : "bg-gray-200"
+                  }`}
+                >
+                  <div
+                    className="h-full bg-green-500 rounded-full transition-all duration-300"
+                    style={{ width: `${habit.successRate}%` }}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           <div
             className={`add-habit-box ${themeClasses.cardBg} rounded-xl shadow-sm border-2 border-dashed ${themeClasses.border} p-6 flex flex-col items-center justify-center min-h-[280px] cursor-pointer
               hover:brightness-110 active:brightness-120
               transition-all duration-150`}
             tabIndex={0}
+            onClick={handleAddHabit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") handleAddHabit();
+            }}
+            role="button"
+            aria-label="Add New Habit"
           >
             <Plus
               size={48}
@@ -326,10 +503,13 @@ const HabitsContent = () => {
         </div>
 
         {/* Edit Modal */}
-        {showEditModal && (
+        {showEdit && (
           <div
             className={`fixed top-16 left-1/2 transform -translate-x-1/2 z-50 w-full flex justify-center ${editAnimClass}`}
-            style={{ transitionProperty: "opacity, transform" }}
+            style={{
+              transitionProperty: "opacity, transform",
+              willChange: "opacity, transform",
+            }}
           >
             {editingHabit && (
               <form
@@ -347,13 +527,14 @@ const HabitsContent = () => {
                 >
                   Edit Habit
                 </h2>
+                {/* Habit Name */}
                 <div className="mb-4">
                   <label
                     className={`block mb-1 font-medium ${
                       isDarkMode ? "text-white" : "text-black"
                     }`}
                   >
-                    Name
+                    Habit Name
                   </label>
                   <input
                     type="text"
@@ -368,26 +549,88 @@ const HabitsContent = () => {
                     required
                   />
                 </div>
+                {/* Choose Icon */}
                 <div className="mb-4">
                   <label
                     className={`block mb-1 font-medium ${
                       isDarkMode ? "text-white" : "text-black"
                     }`}
                   >
-                    Description
+                    Choose Icon
                   </label>
-                  <input
-                    type="text"
-                    name="description"
-                    value={editForm.description}
-                    onChange={handleEditFormChange}
-                    className={`w-full p-2 rounded border ${
-                      isDarkMode
-                        ? "bg-gray-900 text-white border-gray-700"
-                        : "bg-white text-black border-gray-300"
-                    }`}
-                  />
+                  <div className="flex flex-wrap gap-3">
+                    {iconOptions.map((opt) => (
+                      <button
+                        key={opt.label}
+                        type="button"
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-all duration-150 ${
+                          editForm.icon === opt.icon
+                            ? "border-indigo-500 bg-indigo-500"
+                            : isDarkMode
+                            ? "border-gray-700 bg-gray-800 hover:bg-gray-700 active:bg-gray-900"
+                            : "border-gray-300 bg-gray-100 hover:bg-gray-200 active:bg-gray-300"
+                        }`}
+                        onClick={() => handleEditIconSelect(opt.icon)}
+                        aria-label={opt.label}
+                        style={{
+                          boxShadow:
+                            editForm.icon === opt.icon
+                              ? "0 0 0 2px rgba(99,102,241,0.3)"
+                              : "none",
+                        }}
+                      >
+                        {React.createElement(iconMap[opt.icon], {
+                          size: 24,
+                          className:
+                            editForm.icon === opt.icon
+                              ? "text-white"
+                              : isDarkMode
+                              ? "text-gray-300"
+                              : "text-gray-500",
+                        })}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+                {/* Choose Color */}
+                <div className="mb-4">
+                  <label
+                    className={`block mb-1 font-medium ${
+                      isDarkMode ? "text-white" : "text-black"
+                    }`}
+                  >
+                    Icon Color
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    {colorOptions.map((color) => (
+                      <button
+                        key={color.name}
+                        type="button"
+                        className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
+                          editForm.iconColor === color.className
+                            ? "border-indigo-500"
+                            : "border-gray-300"
+                        }`}
+                        style={{
+                          backgroundColor: color.hex,
+                          boxShadow:
+                            editForm.iconColor === color.className
+                              ? "0 0 0 2px rgba(99,102,241,0.3)"
+                              : "none",
+                        }}
+                        onClick={() => handleEditColorSelect(color.className)}
+                        aria-label={color.name}
+                      >
+                        {editForm.iconColor === color.className && (
+                          <span className="text-white text-xs font-bold">
+                            ✓
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Frequency */}
                 <div className="mb-4">
                   <label
                     className={`block mb-1 font-medium ${
@@ -396,22 +639,157 @@ const HabitsContent = () => {
                   >
                     Frequency
                   </label>
-                  <select
-                    name="frequency"
-                    value={editForm.frequency}
+                  <div className="flex gap-2">
+                    {["daily", "weekly", "custom"].map((freq) => (
+                      <button
+                        key={freq}
+                        type="button"
+                        className={`px-4 py-2 rounded-full font-semibold transition-all duration-150 ${
+                          editForm.frequency === freq
+                            ? "bg-indigo-500 text-white"
+                            : isDarkMode
+                            ? "bg-gray-800 text-gray-200 hover:bg-gray-700 active:bg-gray-900"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
+                        }`}
+                        onClick={() =>
+                          setEditForm((prev) => ({ ...prev, frequency: freq }))
+                        }
+                        style={{
+                          boxShadow:
+                            editForm.frequency === freq
+                              ? "0 0 0 2px rgba(99,102,241,0.3)"
+                              : "none",
+                        }}
+                      >
+                        {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Daily Goal & Unit */}
+                <div className="mb-4 flex gap-2">
+                  <div className="flex-1">
+                    <label
+                      className={`block mb-1 font-medium ${
+                        isDarkMode ? "text-white" : "text-black"
+                      }`}
+                    >
+                      Daily Goal
+                    </label>
+                    <input
+                      type="number"
+                      name="dailyGoal"
+                      value={editForm.dailyGoal}
+                      onChange={handleEditFormChange}
+                      min={1}
+                      className={`w-full p-2 rounded border ${
+                        isDarkMode
+                          ? "bg-gray-900 text-white border-gray-700"
+                          : "bg-white text-black border-gray-300"
+                      }`}
+                      required
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label
+                      className={`block mb-1 font-medium ${
+                        isDarkMode ? "text-white" : "text-black"
+                      }`}
+                    >
+                      Unit
+                    </label>
+                    <select
+                      name="unit"
+                      value={editForm.unit}
+                      onChange={handleEditFormChange}
+                      className={`w-full p-2 rounded border ${
+                        isDarkMode
+                          ? "bg-gray-900 text-white border-gray-700"
+                          : "bg-white text-black border-gray-300"
+                      }`}
+                    >
+                      {unitOptions.map((u) => (
+                        <option key={u} value={u}>
+                          {u}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {/* Description */}
+                <div className="mb-4">
+                  <label
+                    className={`block mb-1 font-medium ${
+                      isDarkMode ? "text-white" : "text-black"
+                    }`}
+                  >
+                    Description (Optional)
+                  </label>
+                  <textarea
+                    name="description"
+                    value={editForm.description}
                     onChange={handleEditFormChange}
+                    rows={2}
                     className={`w-full p-2 rounded border ${
                       isDarkMode
-                        ? "bg-gray-900 text-white border-gray-700"
-                        : "bg-white text-black border-gray-300"
+                        ? "bg-gray-900 text-white border-gray-700 placeholder:text-gray-400"
+                        : "bg-white text-black border-gray-300 placeholder:text-gray-600"
                     }`}
-                    required
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="custom">Custom</option>
-                  </select>
+                    placeholder="Add any notes or motivation for this habit..."
+                  />
                 </div>
+                {/* Reminders */}
+                <div className="mb-4">
+                  <label
+                    className={`block mb-1 font-medium ${
+                      isDarkMode ? "text-white" : "text-black"
+                    }`}
+                  >
+                    Reminders
+                  </label>
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="checkbox"
+                      name="reminderEnabled"
+                      checked={editForm.reminderEnabled}
+                      onChange={handleEditFormChange}
+                      className="accent-indigo-500 w-5 h-5"
+                      id="editReminderEnabled"
+                    />
+                    <label
+                      htmlFor="editReminderEnabled"
+                      className={`font-medium ${
+                        isDarkMode ? "text-white" : "text-black"
+                      }`}
+                    >
+                      Enable daily reminders
+                    </label>
+                  </div>
+                  {editForm.reminderEnabled && (
+                    <div className="flex items-center gap-2">
+                      <label
+                        className={`font-medium ${
+                          isDarkMode ? "text-white" : "text-black"
+                        }`}
+                      >
+                        Remind me at:
+                      </label>
+                      <input
+                        type="time"
+                        name="reminderTime"
+                        value={editForm.reminderTime}
+                        onChange={handleEditFormChange}
+                        className={`px-2 py-1 rounded border ${
+                          isDarkMode
+                            ? "bg-gray-900 text-white border-gray-700"
+                            : "bg-white text-black border-gray-300"
+                        }`}
+                        style={{ colorScheme: isDarkMode ? "dark" : "light" }}
+                      />
+                    </div>
+                  )}
+                </div>
+                {/* Buttons */}
                 <div className="flex gap-2 justify-end">
                   <button
                     type="button"
@@ -441,10 +819,13 @@ const HabitsContent = () => {
         )}
 
         {/* Delete Modal */}
-        {showDeleteAnim && (
+        {showDelete && (
           <div
             className={`fixed top-32 left-1/2 transform -translate-x-1/2 z-50 w-full flex justify-center ${deleteAnimClass}`}
-            style={{ transitionProperty: "opacity, transform" }}
+            style={{
+              transitionProperty: "opacity, transform",
+              willChange: "opacity, transform",
+            }}
           >
             {showDeleteModal && habitToDelete && (
               <div
