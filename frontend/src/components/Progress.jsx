@@ -220,7 +220,7 @@ const ProgressContent = () => {
             <div
               className={`rounded-xl shadow-sm p-6 ${themeClasses.cardBg} border ${themeClasses.border}`}
             >
-              <div className={`text-2xl font-bold text-indigo-600 mb-1`}>
+              <div className={`text-2xl font-bold text-indigo-500 mb-1`}>
                 {stats.successRate}%
               </div>
               <div className={`text-sm ${themeClasses.textMuted}`}>
@@ -233,7 +233,7 @@ const ProgressContent = () => {
             <div
               className={`rounded-xl shadow-sm p-6 ${themeClasses.cardBg} border ${themeClasses.border}`}
             >
-              <div className={`text-2xl font-bold text-indigo-600 mb-1`}>
+              <div className={`text-2xl font-bold text-indigo-500 mb-1`}>
                 {stats.currentStreak}
               </div>
               <div className={`text-sm ${themeClasses.textMuted}`}>
@@ -246,7 +246,7 @@ const ProgressContent = () => {
             <div
               className={`rounded-xl shadow-sm p-6 ${themeClasses.cardBg} border ${themeClasses.border}`}
             >
-              <div className={`text-2xl font-bold text-indigo-600 mb-1`}>
+              <div className={`text-2xl font-bold text-indigo-500 mb-1`}>
                 {stats.habitsCompleted}
               </div>
               <div className={`text-sm ${themeClasses.textMuted}`}>

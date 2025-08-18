@@ -163,7 +163,7 @@ const Sidebar = () => {
         <nav className="relative space-y-2">
           {/* Indicator (with sliding animation) */}
           <div
-            className="absolute left-0 w-1 bg-indigo-700 rounded"
+            className="absolute left-0 w-1 bg-indigo-600 rounded"
             style={{
               top: indicatorStyle.top,
               height: indicatorStyle.height,
