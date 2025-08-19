@@ -640,27 +640,6 @@ app.post('/api/habits/:habitId/complete', (req, res) => {
   }
 });
 
-// --- DELETE USER ENDPOINT ---
-app.delete('/api/user/delete', (req, res) => {
-  const userId = req.headers['user-id'] || 'default_user';
-  try {
-    // Delete habit completions for user's habits
-    db.prepare('DELETE FROM habit_completions WHERE user_id = ?').run(userId);
-    // Delete habits
-    db.prepare('DELETE FROM habits WHERE user_id = ?').run(userId);
-    // Delete daily mood
-    db.prepare('DELETE FROM daily_mood WHERE user_id = ?').run(userId);
-    // Delete user auth
-    db.prepare('DELETE FROM user_auth WHERE user_id = ?').run(userId);
-    // Delete user profile
-    db.prepare('DELETE FROM users WHERE user_id = ?').run(userId);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Failed to delete user:', err);
-    res.status(500).json({ error: 'Failed to delete user' });
-  }
-});
-
 // Unmark habit as completed for a date (with streak update)
 app.post('/api/habits/:habitId/uncomplete', (req, res) => {
   const userId = req.headers['user-id'] || 'default_user';
@@ -708,7 +687,7 @@ app.get('/api/user/profile', (req, res) => {
 
 // --- REGISTER ENDPOINT ---
 app.post('/api/auth/register', async (req, res) => {
-  const { name, email, password, timezone, language } = req.body;
+  const { name, email, password } = req.body;
   if (!name || !email || !password) {
     return res.status(400).json({ message: "Missing required fields" });
   }
@@ -747,8 +726,8 @@ app.post('/api/auth/register', async (req, res) => {
     firstName,
     lastName,
     email,
-    timezone || "UTC+01:00",
-    language || "English"
+    "Europe/Stockholm",
+    "English"
   );
 
   // Seed starter habits

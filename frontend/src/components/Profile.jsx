@@ -584,6 +584,18 @@ const ProfileContent = () => {
               >
                 <option
                   className={isDarkMode ? "bg-gray-800 text-white" : ""}
+                  value="Europe/Stockholm"
+                >
+                  Stockholm - UTC+01:00
+                </option>
+                <option
+                  className={isDarkMode ? "bg-gray-800 text-white" : ""}
+                  value="Europe/London"
+                >
+                  London - UTC+00:00
+                </option>
+                <option
+                  className={isDarkMode ? "bg-gray-800 text-white" : ""}
                   value="UTC+01:00"
                 >
                   Central European Time - UTC+01:00

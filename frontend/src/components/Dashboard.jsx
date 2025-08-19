@@ -18,6 +18,7 @@ import {
 import { ThemeContext } from "./reusables/ThemeContext.js";
 
 const API_BASE = "http://localhost:3000";
+const USER_ID = localStorage.getItem("userId") || "default_user";
 
 const iconMap = {
   Droplets,
@@ -45,7 +46,7 @@ const DashboardContent = () => {
   const { isDarkMode, themeClasses } = useContext(ThemeContext);
 
   const [focusLevel, setFocusLevel] = useState(0);
-  const [selectedMood, setSelectedMood] = useState("neutral");
+  const [selectedMood, setSelectedMood] = useState(null);
   const [habitHistory, setHabitHistory] = useState({});
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
@@ -63,9 +64,8 @@ const DashboardContent = () => {
   // --- Fetch streaks from backend ---
   const fetchStreaks = async () => {
     try {
-      const userId = localStorage.getItem("userId") || "default_user";
       const statsRes = await fetch(`${API_BASE}/api/user/stats`, {
-        headers: { "user-id": userId },
+        headers: { "user-id": USER_ID },
       });
       if (statsRes.ok) {
         const stats = await statsRes.json();
@@ -81,14 +81,13 @@ const DashboardContent = () => {
 
   // Fetch habits for a specific date
   const fetchHabitsForDate = async (dateString) => {
-    const userId = localStorage.getItem("userId") || "default_user";
     const habitsRes = await fetch(`${API_BASE}/api/user/habits`, {
-      headers: { "user-id": userId },
+      headers: { "user-id": USER_ID },
     });
     const habitsArray = habitsRes.ok ? await habitsRes.json() : [];
     const completionsRes = await fetch(
       `${API_BASE}/api/user/habits/completions?date=${dateString}`,
-      { headers: { "user-id": userId } }
+      { headers: { "user-id": USER_ID } }
     );
     const completions = completionsRes.ok ? await completionsRes.json() : [];
     const completedMap = {};
@@ -116,9 +115,8 @@ const DashboardContent = () => {
       const history = {};
 
       // Get all habits once
-      const userId = localStorage.getItem("userId") || "default_user";
       const habitsRes = await fetch(`${API_BASE}/api/user/habits`, {
-        headers: { "user-id": userId },
+        headers: { "user-id": USER_ID },
       });
       const habitsArray = habitsRes.ok ? await habitsRes.json() : [];
 
@@ -147,7 +145,7 @@ const DashboardContent = () => {
         // Fetch completions for this date
         const completionsRes = await fetch(
           `${API_BASE}/api/user/habits/completions?date=${dateString}`,
-          { headers: { "user-id": userId } }
+          { headers: { "user-id": USER_ID } }
         );
         const completions = completionsRes.ok
           ? await completionsRes.json()
@@ -181,15 +179,14 @@ const DashboardContent = () => {
     try {
       setMoodLoading(true);
       const todayString = getTodayDateString();
-      const userId = localStorage.getItem("userId") || "default_user";
       const res = await fetch(`${API_BASE}/api/user/mood?date=${todayString}`, {
-        headers: { "user-id": userId },
+        headers: { "user-id": USER_ID },
       });
       if (res.ok) {
         const data = await res.json();
         if (data) {
           setFocusLevel(data.focus_level ?? 0);
-          setSelectedMood(data.mood ?? "neutral");
+          setSelectedMood(data.mood ?? null);
         }
       }
     } catch (err) {
@@ -201,9 +198,8 @@ const DashboardContent = () => {
 
   // Fetch account creation date
   const fetchAccountCreatedAt = async () => {
-    const userId = localStorage.getItem("userId") || "default_user";
     const profileRes = await fetch(`${API_BASE}/api/user/profile`, {
-      headers: { "user-id": userId },
+      headers: { "user-id": USER_ID },
     });
     if (profileRes.ok) {
       const profile = await profileRes.json();
@@ -241,12 +237,11 @@ const DashboardContent = () => {
     const endpoint = completed
       ? `${API_BASE}/api/habits/${habitId}/uncomplete`
       : `${API_BASE}/api/habits/${habitId}/complete`;
-    const userId = localStorage.getItem("userId") || "default_user";
     await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "user-id": userId,
+        "user-id": USER_ID,
       },
       body: JSON.stringify({ date: dateString }),
     });
@@ -260,12 +255,11 @@ const DashboardContent = () => {
     setMoodLoading(true);
     const todayString = getTodayDateString();
     try {
-      const userId = localStorage.getItem("userId") || "default_user";
       await fetch(`${API_BASE}/api/user/mood`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "user-id": userId,
+          "user-id": USER_ID,
         },
         body: JSON.stringify({
           mood,
