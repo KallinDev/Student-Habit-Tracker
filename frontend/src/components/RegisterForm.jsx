@@ -8,7 +8,6 @@ const RegisterForm = ({ onAuthSuccess, onSwitchToLogin }) => {
   const [password, setPassword] = useState("");
   const [lastName, setLastName] = useState("");
   const [retypePassword, setRetypePassword] = useState("");
-  const [retypeEmail, setRetypeEmail] = useState("");
   const [language, setLanguage] = useState("English");
   const [timezone, setTimezone] = useState("UTC+01:00");
   const [loading, setLoading] = useState(false);
