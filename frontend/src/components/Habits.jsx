@@ -180,10 +180,13 @@ const HabitsContent = () => {
 
   const navigate = useNavigate();
 
-  // Fetch habits
+  // Fetch habits for logged-in user
   const fetchHabits = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/user/habits`);
+      const userId = localStorage.getItem("userId") || "default_user";
+      const res = await fetch(`${API_BASE}/api/user/habits`, {
+        headers: { "user-id": userId },
+      });
       const data = await res.json();
       const habitsWithRates = (Array.isArray(data) ? data : []).map((h) => ({
         ...h,
@@ -265,6 +268,7 @@ const HabitsContent = () => {
     e.preventDefault();
     if (!editingHabit) return;
     try {
+      const userId = localStorage.getItem("userId") || "default_user";
       const payload = {
         name: editForm.name,
         icon: editForm.icon,
@@ -276,24 +280,23 @@ const HabitsContent = () => {
         reminder_enabled: editForm.reminderEnabled,
         reminder_time: editForm.reminderTime,
       };
-      console.log("Submitting PUT payload:", payload); // Debug log
-
       const res = await fetch(`${API_BASE}/api/habits/${editingHabit.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "user-id": userId,
+        },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const errorText = await res.text();
-        console.error("PUT error:", res.status, errorText);
         alert(`Failed to update habit: ${errorText}`);
       }
 
       setEditingHabit(null);
       fetchHabits();
     } catch (error) {
-      console.log(error);
       alert("Failed to update habit: " + error.message);
     }
   };
@@ -308,8 +311,10 @@ const HabitsContent = () => {
   const confirmDelete = async () => {
     if (!habitToDelete) return;
     try {
+      const userId = localStorage.getItem("userId") || "default_user";
       await fetch(`${API_BASE}/api/habits/${habitToDelete.id}`, {
         method: "DELETE",
+        headers: { "user-id": userId },
       });
       setShowDeleteModal(false);
       setHabitToDelete(null);
@@ -737,57 +742,6 @@ const HabitsContent = () => {
                     }`}
                     placeholder="Add any notes or motivation for this habit..."
                   />
-                </div>
-                {/* Reminders */}
-                <div className="mb-4">
-                  <label
-                    className={`block mb-1 font-medium ${
-                      isDarkMode ? "text-white" : "text-black"
-                    }`}
-                  >
-                    Reminders
-                  </label>
-                  <div className="flex items-center gap-2 mb-2">
-                    <input
-                      type="checkbox"
-                      name="reminderEnabled"
-                      checked={editForm.reminderEnabled}
-                      onChange={handleEditFormChange}
-                      className="accent-indigo-500 w-5 h-5"
-                      id="editReminderEnabled"
-                    />
-                    <label
-                      htmlFor="editReminderEnabled"
-                      className={`font-medium ${
-                        isDarkMode ? "text-white" : "text-black"
-                      }`}
-                    >
-                      Enable daily reminders
-                    </label>
-                  </div>
-                  {editForm.reminderEnabled && (
-                    <div className="flex items-center gap-2">
-                      <label
-                        className={`font-medium ${
-                          isDarkMode ? "text-white" : "text-black"
-                        }`}
-                      >
-                        Remind me at:
-                      </label>
-                      <input
-                        type="time"
-                        name="reminderTime"
-                        value={editForm.reminderTime}
-                        onChange={handleEditFormChange}
-                        className={`px-2 py-1 rounded border ${
-                          isDarkMode
-                            ? "bg-gray-900 text-white border-gray-700"
-                            : "bg-white text-black border-gray-300"
-                        }`}
-                        style={{ colorScheme: isDarkMode ? "dark" : "light" }}
-                      />
-                    </div>
-                  )}
                 </div>
                 {/* Buttons */}
                 <div className="flex gap-2 justify-end">

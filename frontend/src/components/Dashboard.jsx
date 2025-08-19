@@ -18,7 +18,6 @@ import {
 import { ThemeContext } from "./reusables/ThemeContext.js";
 
 const API_BASE = "http://localhost:3000";
-const USER_ID = "default_user"; // Always use this for all requests
 
 const iconMap = {
   Droplets,
@@ -35,85 +34,93 @@ const iconMap = {
 };
 
 const DashboardContent = () => {
+  const getTodayDateString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const { isDarkMode, themeClasses } = useContext(ThemeContext);
 
   const [focusLevel, setFocusLevel] = useState(0);
-  const [selectedMood, setSelectedMood] = useState(null);
-  const [habits, setHabits] = useState([]);
+  const [selectedMood, setSelectedMood] = useState("neutral");
   const [habitHistory, setHabitHistory] = useState({});
   const [currentStreak, setCurrentStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
   const [moodLoading, setMoodLoading] = useState(false);
+  const [accountCreatedAt, setAccountCreatedAt] = useState(null);
 
   // For slider drag: only save on release
   const sliderDragging = useRef(false);
 
-  // Fetch habits and completions
-  const fetchHabitsAndCompletions = async () => {
+  // --- State for selected day in calendar ---
+  const [selectedDate, setSelectedDate] = useState(getTodayDateString());
+  const [selectedDayHabits, setSelectedDayHabits] = useState([]);
+
+  // --- Fetch streaks from backend ---
+  const fetchStreaks = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/user/habits`, {
-        headers: { "user-id": USER_ID },
-      });
-      if (!res.ok) throw new Error("Failed to fetch habits");
-      const data = await res.json();
-      const habitsArray = Array.isArray(data) ? data : data.data;
-
-      // Fetch today's completions
-      const todayString = getTodayDateString();
-      const completionsRes = await fetch(
-        `${API_BASE}/api/user/habits/completions?date=${todayString}`,
-        { headers: { "user-id": USER_ID } }
-      );
-      const completionsData = completionsRes.ok
-        ? await completionsRes.json()
-        : [];
-      const completedMap = {};
-      completionsData.forEach((c) => {
-        completedMap[c.habitId] = c.completed;
-      });
-
-      setHabits(
-        Array.isArray(habitsArray)
-          ? habitsArray.map((h) => ({
-              ...h,
-              icon: iconMap[h.icon] || Droplets,
-              completed: !!completedMap[h.id],
-            }))
-          : []
-      );
-
-      // Fetch habit history for calendar (last 21 days)
-      await fetchHabitHistory();
-    } catch (err) {
-      console.warn("Habits endpoint missing or failed:", err);
-      setHabits([]);
-    }
-
-    // Try to fetch streaks, but don't crash if not found
-    try {
+      const userId = localStorage.getItem("userId") || "default_user";
       const statsRes = await fetch(`${API_BASE}/api/user/stats`, {
-        headers: { "user-id": USER_ID },
+        headers: { "user-id": userId },
       });
       if (statsRes.ok) {
         const stats = await statsRes.json();
         setCurrentStreak(stats.currentStreak || 0);
         setLongestStreak(stats.bestStreak || 0);
-      } else {
-        setCurrentStreak(0);
-        setLongestStreak(0);
       }
     } catch (err) {
-      console.warn("Stats endpoint missing or failed:", err);
+      console.error("Failed to fetch streaks:", err);
       setCurrentStreak(0);
       setLongestStreak(0);
     }
   };
 
-  // Fetch habit history for the calendar
+  // Fetch habits for a specific date
+  const fetchHabitsForDate = async (dateString) => {
+    const userId = localStorage.getItem("userId") || "default_user";
+    const habitsRes = await fetch(`${API_BASE}/api/user/habits`, {
+      headers: { "user-id": userId },
+    });
+    const habitsArray = habitsRes.ok ? await habitsRes.json() : [];
+    const completionsRes = await fetch(
+      `${API_BASE}/api/user/habits/completions?date=${dateString}`,
+      { headers: { "user-id": userId } }
+    );
+    const completions = completionsRes.ok ? await completionsRes.json() : [];
+    const completedMap = {};
+    completions.forEach((c) => {
+      completedMap[c.habitId] = c.completed;
+    });
+    setSelectedDayHabits(
+      habitsArray
+        .filter((h) => h.created_at.slice(0, 10) <= dateString)
+        .map((h) => ({
+          ...h,
+          icon: iconMap[h.icon] || Droplets,
+          completed: !!completedMap[h.id],
+        }))
+    );
+  };
+
+  // --- Fetch habit history for the calendar ---
   const fetchHabitHistory = async () => {
+    if (!accountCreatedAt) {
+      setHabitHistory({});
+      return;
+    }
     try {
       const history = {};
+
+      // Get all habits once
+      const userId = localStorage.getItem("userId") || "default_user";
+      const habitsRes = await fetch(`${API_BASE}/api/user/habits`, {
+        headers: { "user-id": userId },
+      });
+      const habitsArray = habitsRes.ok ? await habitsRes.json() : [];
 
       // Generate last 21 days
       for (let i = 20; i >= 0; i--) {
@@ -124,35 +131,46 @@ const DashboardContent = () => {
         const day = String(date.getDate()).padStart(2, "0");
         const dateString = `${year}-${month}-${day}`;
 
+        // Days before account creation: always grey
+        if (dateString < accountCreatedAt) {
+          history[dateString] = "empty";
+          continue;
+        }
+
+        // Habits active on this day
+        const habitsForDay = habitsArray.filter(
+          (h) => h.created_at.slice(0, 10) <= dateString
+        );
+        const habitIdsForDay = habitsForDay.map((h) => h.id);
+        const totalCount = habitIdsForDay.length;
+
         // Fetch completions for this date
         const completionsRes = await fetch(
           `${API_BASE}/api/user/habits/completions?date=${dateString}`,
-          { headers: { "user-id": USER_ID } }
+          { headers: { "user-id": userId } }
         );
+        const completions = completionsRes.ok
+          ? await completionsRes.json()
+          : [];
 
-        if (completionsRes.ok) {
-          const completions = await completionsRes.json();
-          if (completions.length === 0) {
-            history[dateString] = "empty";
-          } else {
-            const completedCount = completions.filter(
-              (c) => c.completed
-            ).length;
-            const totalCount = completions.length;
-            if (completedCount === totalCount && totalCount > 0) {
-              history[dateString] = "completed";
-            } else if (completedCount > 0) {
-              history[dateString] = "partial";
-            } else {
-              history[dateString] = "empty";
-            }
-          }
+        // Only count completions for habits that exist on this day
+        const completedCount = completions.filter(
+          (c) => c.completed && habitIdsForDay.includes(c.habitId)
+        ).length;
+
+        if (totalCount === 0) {
+          history[dateString] = "empty";
+        } else if (completedCount === totalCount) {
+          history[dateString] = "completed";
+        } else if (completedCount > 0) {
+          history[dateString] = "partial";
         } else {
           history[dateString] = "empty";
         }
       }
 
       setHabitHistory(history);
+      await fetchStreaks(); // FIX: update streaks after history
     } catch (err) {
       console.warn("Failed to fetch habit history:", err);
     }
@@ -163,14 +181,15 @@ const DashboardContent = () => {
     try {
       setMoodLoading(true);
       const todayString = getTodayDateString();
+      const userId = localStorage.getItem("userId") || "default_user";
       const res = await fetch(`${API_BASE}/api/user/mood?date=${todayString}`, {
-        headers: { "user-id": USER_ID },
+        headers: { "user-id": userId },
       });
       if (res.ok) {
         const data = await res.json();
         if (data) {
           setFocusLevel(data.focus_level ?? 0);
-          setSelectedMood(data.mood ?? null);
+          setSelectedMood(data.mood ?? "neutral");
         }
       }
     } catch (err) {
@@ -180,58 +199,60 @@ const DashboardContent = () => {
     }
   };
 
+  // Fetch account creation date
+  const fetchAccountCreatedAt = async () => {
+    const userId = localStorage.getItem("userId") || "default_user";
+    const profileRes = await fetch(`${API_BASE}/api/user/profile`, {
+      headers: { "user-id": userId },
+    });
+    if (profileRes.ok) {
+      const profile = await profileRes.json();
+      setAccountCreatedAt(profile.memberSince?.slice(0, 10) || null);
+    } else {
+      setAccountCreatedAt(null);
+    }
+  };
+
   useEffect(() => {
-    fetchHabitsAndCompletions();
+    fetchAccountCreatedAt();
     fetchTodayMood();
+    fetchHabitsForDate(getTodayDateString());
+    fetchStreaks(); // FIX: fetch streaks on load
     // eslint-disable-next-line
   }, []);
 
-  const getTodayDateString = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  // --- Toggle habit: mark or unmark as completed for today ---
-  const toggleHabit = async (habitId) => {
-    if (loading) return;
-
-    setLoading(true);
-    const todayString = getTodayDateString();
-    const habit = habits.find((h) => h.id === habitId);
-    if (!habit) {
-      setLoading(false);
-      return;
+  useEffect(() => {
+    if (accountCreatedAt) {
+      fetchHabitHistory();
+      fetchHabitsForDate(selectedDate);
     }
+    // eslint-disable-next-line
+  }, [accountCreatedAt]);
 
-    const endpoint = habit.completed
+  useEffect(() => {
+    if (selectedDate) {
+      fetchHabitsForDate(selectedDate);
+    }
+    // eslint-disable-next-line
+  }, [selectedDate]);
+
+  // --- Toggle habit for selected day ---
+  const toggleHabitForDate = async (habitId, dateString, completed) => {
+    const endpoint = completed
       ? `${API_BASE}/api/habits/${habitId}/uncomplete`
       : `${API_BASE}/api/habits/${habitId}/complete`;
-
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "user-id": USER_ID,
-        },
-        body: JSON.stringify({ date: todayString }),
-      });
-
-      if (!res.ok) {
-        console.error("Toggle endpoint failed:", res.status, await res.text());
-        setLoading(false);
-        return;
-      }
-
-      await fetchHabitsAndCompletions();
-    } catch (err) {
-      console.error("Toggle endpoint failed:", err);
-    } finally {
-      setLoading(false);
-    }
+    const userId = localStorage.getItem("userId") || "default_user";
+    await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "user-id": userId,
+      },
+      body: JSON.stringify({ date: dateString }),
+    });
+    await fetchHabitsForDate(dateString);
+    await fetchHabitHistory();
+    await fetchStreaks(); // FIX: update streaks after toggling
   };
 
   // --- Save mood/focus for today ---
@@ -239,11 +260,12 @@ const DashboardContent = () => {
     setMoodLoading(true);
     const todayString = getTodayDateString();
     try {
+      const userId = localStorage.getItem("userId") || "default_user";
       await fetch(`${API_BASE}/api/user/mood`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "user-id": USER_ID,
+          "user-id": userId,
         },
         body: JSON.stringify({
           mood,
@@ -372,18 +394,23 @@ const DashboardContent = () => {
           </h1>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Today's Habits */}
+            {/* Habits for selected day */}
             <div className="lg:col-span-2">
               <div
                 className={`${themeClasses.cardBg} rounded-2xl shadow-sm border ${themeClasses.border} p-6`}
               >
                 <h2
-                  className={`text-xl font-semibold ${themeClasses.text} mb-6`}
+                  className={`text-xl font-semibold ${themeClasses.text} mb-2`}
                 >
-                  Today's Habits
+                  Habits for{" "}
+                  <span className="text-indigo-500 font-bold">
+                    {selectedDate === getTodayDateString()
+                      ? "Today"
+                      : selectedDate}
+                  </span>
                 </h2>
                 <div className="space-y-4">
-                  {habits.map((habit) => {
+                  {selectedDayHabits.map((habit) => {
                     const IconComponent = habit.icon || Droplets;
                     return (
                       <div
@@ -397,11 +424,17 @@ const DashboardContent = () => {
                           }
                           ${loading ? "opacity-50 pointer-events-none" : ""}
                           focus:outline-none focus:ring-2 focus:ring-indigo-400`}
-                        onClick={() => toggleHabit(habit.id)}
+                        onClick={() =>
+                          toggleHabitForDate(
+                            habit.id,
+                            selectedDate,
+                            habit.completed
+                          )
+                        }
                         tabIndex={0}
                       >
                         <div
-                          className={`w-10 h-10 ${iconBg} rounded-full flex items-center justify-center transition-all duration-200`}
+                          className={`w-10 h-10 ${iconBg} rounded-full flex items-center justify-center`}
                         >
                           {React.createElement(IconComponent, {
                             size: 18,
@@ -414,7 +447,7 @@ const DashboardContent = () => {
                           {habit.name}
                         </span>
                         <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200
+                          className={`w-6 h-6 rounded-full flex items-center justify-center
                             ${
                               habit.completed
                                 ? "bg-green-500"
@@ -630,15 +663,14 @@ const DashboardContent = () => {
 
               {/* Calendar grid */}
               <div className="grid grid-cols-7 gap-1">
-                {Array.from(
-                  { length: calendarData[0]?.dayOfWeek || 0 },
-                  (_, i) => (
+                {/* Pad empty cells for first week */}
+                {calendarData.length > 0 &&
+                  Array.from({ length: calendarData[0].dayOfWeek }, (_, i) => (
                     <div
-                      key={`empty-${i}`}
+                      key={`pad-${i}`}
                       className="w-8 h-8 flex items-center justify-center"
                     ></div>
-                  )
-                )}
+                  ))}
 
                 {calendarData.map((day) => {
                   const isToday = day.dateString === getTodayDateString();
@@ -646,10 +678,10 @@ const DashboardContent = () => {
                     <div
                       key={day.dateString}
                       className={`w-8 h-8 rounded flex items-center justify-center mx-auto
-                        ${getCalendarColor(day.status)}
-                        hover:opacity-80 cursor-pointer
-                        ${isToday ? "ring-2 ring-indigo-400" : ""}
-                      `}
+          ${getCalendarColor(day.status)}
+          hover:opacity-80 cursor-pointer
+          ${isToday ? "ring-2 ring-indigo-400" : ""}
+        `}
                       title={`${day.date.toLocaleDateString()}: ${
                         day.status === "completed"
                           ? "All habits completed!"
@@ -657,6 +689,17 @@ const DashboardContent = () => {
                           ? "Some habits completed"
                           : "No habits completed"
                       }`}
+                      onClick={() => {
+                        setSelectedDate(day.dateString);
+                        fetchHabitsForDate(day.dateString);
+                        fetchStreaks(); // FIX: update streaks on calendar click
+                      }}
+                      style={{
+                        border:
+                          selectedDate === day.dateString
+                            ? "2px solid #6366f1"
+                            : "none",
+                      }}
                     >
                       <span
                         className={`text-xs font-semibold ${

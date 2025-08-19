@@ -51,6 +51,7 @@ const PieChart = ({ data, colors }) => {
   if (!data || data.length === 0)
     return <div className="text-xs text-gray-400">No data</div>;
   const total = data.reduce((sum, d) => sum + d.value, 0);
+  if (total === 0) return <div className="text-xs text-gray-400">No data</div>;
   let cumulative = 0;
   const radius = 40;
   const cx = 50;
@@ -136,9 +137,10 @@ const ProgressContent = () => {
   const [pieData, setPieData] = useState([]);
 
   useEffect(() => {
+    const userId = localStorage.getItem("userId") || "default_user";
     // Fetch stats
     fetch("http://localhost:3000/api/user/stats", {
-      headers: { "user-id": "default_user" },
+      headers: { "user-id": userId },
     })
       .then((res) => res.json())
       .then((data) => {
@@ -152,7 +154,7 @@ const ProgressContent = () => {
 
     // Fetch habits
     fetch("http://localhost:3000/api/user/habits", {
-      headers: { "user-id": "default_user" },
+      headers: { "user-id": userId },
     })
       .then((res) => res.json())
       .then((data) => {
@@ -190,8 +192,9 @@ const ProgressContent = () => {
   // Fetch chart data when selectedPeriod changes
   useEffect(() => {
     setLoadingChart(true);
+    const userId = localStorage.getItem("userId") || "default_user";
     fetch(`http://localhost:3000/api/user/stats/trend?days=${selectedPeriod}`, {
-      headers: { "user-id": "default_user" },
+      headers: { "user-id": userId },
     })
       .then((res) => res.json())
       .then((data) => {

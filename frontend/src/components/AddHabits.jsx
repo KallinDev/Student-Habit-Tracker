@@ -54,7 +54,7 @@ const unitOptions = [
 ];
 
 const API_BASE = "http://localhost:3000";
-const USER_ID = "default_user";
+const USER_ID = localStorage.getItem("userId") || "default_user";
 
 const AddHabits = ({ onCreated }) => {
   const { isDarkMode, themeClasses } = useContext(ThemeContext);
@@ -374,46 +374,6 @@ const AddHabits = ({ onCreated }) => {
             }`}
             placeholder="Add any notes or motivation for this habit..."
           />
-        </div>
-
-        {/* Reminders */}
-        <div className="mb-4">
-          <label
-            className={`block mb-1 font-medium ${
-              isDarkMode ? themeClasses.text : ""
-            }`}
-          >
-            Reminders
-          </label>
-          <div className="flex items-center gap-2 mb-2">
-            <input
-              type="checkbox"
-              name="reminderEnabled"
-              checked={form.reminderEnabled}
-              onChange={handleChange}
-              className="accent-indigo-500 w-5 h-5"
-              id="reminderEnabled"
-            />
-            <label htmlFor="reminderEnabled" className="font-medium">
-              Enable daily reminders
-            </label>
-          </div>
-          {form.reminderEnabled && (
-            <div className="flex items-center gap-2">
-              <label className="font-medium">Remind me at:</label>
-              <input
-                type="time"
-                name="reminderTime"
-                value={form.reminderTime}
-                onChange={handleChange}
-                className={`px-2 py-1 rounded border transition-all duration-150 ${
-                  isDarkMode
-                    ? "bg-gray-800 text-white border-gray-700 focus:border-indigo-500"
-                    : "bg-gray-100 text-black border-gray-300 focus:border-indigo-500"
-                }`}
-              />
-            </div>
-          )}
         </div>
 
         {/* Buttons */}

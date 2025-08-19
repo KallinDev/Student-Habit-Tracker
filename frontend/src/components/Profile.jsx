@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
 import { ThemeContext } from "./reusables/ThemeContext.js";
 
+// Use API_BASE for all backend requests
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3000";
+
 const ProfileContent = () => {
   const { isDarkMode, themeClasses } = useContext(ThemeContext);
 
@@ -11,7 +14,7 @@ const ProfileContent = () => {
   const [timezone, setTimezone] = useState("");
   const [language, setLanguage] = useState("");
   const [profileImage, setProfileImage] = useState("");
-  const [memberSince, setMemberSince] = useState(""); // <-- Add this
+  const [memberSince, setMemberSince] = useState("");
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [weeklyReports, setWeeklyReports] = useState(false);
@@ -52,8 +55,14 @@ const ProfileContent = () => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await fetch("/api/user/profile", {
-          headers: { "user-id": "default_user" },
+        const token = localStorage.getItem("token");
+        const userId = localStorage.getItem("userId") || "default_user";
+        const res = await fetch(`${API_BASE}/api/user/profile`, {
+          headers: {
+            "user-id": userId,
+            Authorization: token ? `Bearer ${token}` : undefined,
+          },
+          credentials: "include",
         });
         if (!res.ok) throw new Error("Failed to fetch profile");
         const data = await res.json();
@@ -71,7 +80,7 @@ const ProfileContent = () => {
           language: data.language || "",
           profileImage: data.profileImage || "",
         });
-        setMemberSince(data.memberSince || ""); // <-- Set memberSince from backend
+        setMemberSince(data.memberSince || "");
       } catch (error) {
         console.error("Failed to fetch profile:", error);
         setFirstName("Student");
@@ -88,7 +97,7 @@ const ProfileContent = () => {
           language: "English",
           profileImage: "",
         });
-        setMemberSince(""); // fallback
+        setMemberSince("");
       }
     };
     fetchProfile();
@@ -97,8 +106,14 @@ const ProfileContent = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch("/api/user/stats", {
-          headers: { "user-id": "default_user" },
+        const token = localStorage.getItem("token");
+        const userId = localStorage.getItem("userId") || "default_user";
+        const res = await fetch(`${API_BASE}/api/user/stats`, {
+          headers: {
+            "user-id": userId,
+            Authorization: token ? `Bearer ${token}` : undefined,
+          },
+          credentials: "include",
         });
         if (!res.ok) throw new Error("Failed to fetch stats");
         const data = await res.json();
@@ -108,9 +123,9 @@ const ProfileContent = () => {
           totalDays: data.totalDays ?? data.total_days ?? 0,
           successRate:
             typeof data.successRate === "number"
-              ? `${data.successRate}%`
+              ? `${Math.max(0, Math.min(100, data.successRate))}%`
               : typeof data.success_rate === "number"
-              ? `${data.success_rate}%`
+              ? `${Math.max(0, Math.min(100, data.success_rate))}%`
               : "0%",
           bestStreak: data.bestStreak ?? data.best_streak ?? 0,
         });
@@ -171,13 +186,17 @@ const ProfileContent = () => {
 
   const handleSave = async () => {
     try {
-      const res = await fetch("/api/user/profile", {
-        method: "PUT",
+      const token = localStorage.getItem("token");
+      const userId = localStorage.getItem("userId") || "default_user";
+      const res = await fetch(`${API_BASE}/api/user/profile`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "user-id": "default_user",
+          "user-id": userId,
+          Authorization: token ? `Bearer ${token}` : undefined,
         },
         body: JSON.stringify(editState),
+        credentials: "include",
       });
       if (!res.ok) throw new Error("Failed to save profile");
       setFirstName(editState.firstName);
@@ -187,7 +206,6 @@ const ProfileContent = () => {
       setLanguage(editState.language);
       setProfileImage(editState.profileImage);
       setFeedback("Profile saved!");
-      // --- Notify Sidebar and other tabs to update instantly ---
       window.dispatchEvent(new Event("profileUpdated"));
       localStorage.setItem("profileUpdated", Date.now().toString());
     } catch (error) {
@@ -198,11 +216,20 @@ const ProfileContent = () => {
 
   const handleDeleteAccount = async () => {
     try {
-      await fetch("/api/user/delete", {
+      const token = localStorage.getItem("token");
+      const userId = localStorage.getItem("userId") || "default_user";
+      await fetch(`${API_BASE}/api/user/delete`, {
         method: "DELETE",
-        headers: { "user-id": "default_user" },
+        headers: {
+          "user-id": userId,
+          Authorization: token ? `Bearer ${token}` : undefined,
+        },
+        credentials: "include",
       });
       setShowDeleteModal(false);
+      // Clear localStorage and redirect to login
+      localStorage.clear();
+      window.location.href = "/login"; // or your login route
     } catch (error) {
       console.error("Failed to delete account:", error);
       setShowDeleteModal(false);
@@ -254,12 +281,10 @@ const ProfileContent = () => {
     if (!memberSince) return "";
     const date = new Date(memberSince);
     if (isNaN(date)) return "";
-    // Use 'en-US' locale for English month name
     const formatted = date.toLocaleString("en-US", {
       month: "long",
       year: "numeric",
     });
-    // Capitalize first letter (in case locale returns lowercase)
     return formatted.charAt(0).toUpperCase() + formatted.slice(1);
   };
 
@@ -557,18 +582,6 @@ const ProfileContent = () => {
                 onChange={(e) => handleEditChange("timezone", e.target.value)}
                 className={`w-full px-4 py-2 rounded-lg border ${themeClasses.border} bg-transparent ${themeClasses.text}`}
               >
-                <option
-                  className={isDarkMode ? "bg-gray-800 text-white" : ""}
-                  value="Europe/Stockholm"
-                >
-                  Stockholm - UTC+01:00
-                </option>
-                <option
-                  className={isDarkMode ? "bg-gray-800 text-white" : ""}
-                  value="Europe/London"
-                >
-                  London - UTC+00:00
-                </option>
                 <option
                   className={isDarkMode ? "bg-gray-800 text-white" : ""}
                   value="UTC+01:00"

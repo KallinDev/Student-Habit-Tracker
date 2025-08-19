@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   Outlet,
+  useNavigate,
 } from "react-router-dom";
 import Dashboard from "./components/Dashboard";
 import Profile from "./components/Profile";
@@ -13,6 +14,7 @@ import Habits from "./components/Habits.jsx";
 import AddHabits from "./components/AddHabits.jsx";
 import Progress from "./components/Progress.jsx";
 import About from "./components/About.jsx";
+import FlipCardAuth from "./components/reusables/FlipCardAuth.jsx";
 
 const Layout = () => {
   const [firstName] = useState("Gustav");
@@ -26,11 +28,29 @@ const Layout = () => {
   );
 };
 
+const AuthRoutes = () => {
+  const navigate = useNavigate();
+
+  const handleAuthSuccess = () => {
+    navigate("/");
+  };
+
+  return (
+    <Routes>
+      <Route
+        path="/*"
+        element={<FlipCardAuth onAuthSuccess={handleAuthSuccess} />}
+      />
+    </Routes>
+  );
+};
+
 const App = () => {
   return (
     <ThemeProvider>
       <Router>
         <Routes>
+          <Route path="/*" element={<AuthRoutes />} />
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
