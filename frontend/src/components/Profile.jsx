@@ -56,7 +56,7 @@ const ProfileContent = () => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("token");
-        const userId = localStorage.getItem("userId") || "default_user";
+        const userId = localStorage.getItem("userId");
         const res = await fetch(`${API_BASE}/api/user/profile`, {
           headers: {
             "user-id": userId,
@@ -107,7 +107,7 @@ const ProfileContent = () => {
     const fetchStats = async () => {
       try {
         const token = localStorage.getItem("token");
-        const userId = localStorage.getItem("userId") || "default_user";
+        const userId = localStorage.getItem("userId");
         const res = await fetch(`${API_BASE}/api/user/stats`, {
           headers: {
             "user-id": userId,
@@ -187,7 +187,7 @@ const ProfileContent = () => {
   const handleSave = async () => {
     try {
       const token = localStorage.getItem("token");
-      const userId = localStorage.getItem("userId") || "default_user";
+      const userId = localStorage.getItem("userId");
       const res = await fetch(`${API_BASE}/api/user/profile`, {
         method: "PATCH",
         headers: {
@@ -217,7 +217,7 @@ const ProfileContent = () => {
   const handleDeleteAccount = async () => {
     try {
       const token = localStorage.getItem("token");
-      const userId = localStorage.getItem("userId") || "default_user";
+      const userId = localStorage.getItem("userId");
       await fetch(`${API_BASE}/api/user/delete`, {
         method: "DELETE",
         headers: {

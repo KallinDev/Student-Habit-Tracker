@@ -54,7 +54,9 @@ const unitOptions = [
 ];
 
 const API_BASE = "http://localhost:3000";
-const USER_ID = localStorage.getItem("userId") || "default_user";
+function getUserId() {
+  return localStorage.getItem("userId");
+}
 
 const AddHabits = ({ onCreated }) => {
   const { isDarkMode, themeClasses } = useContext(ThemeContext);
@@ -107,7 +109,7 @@ const AddHabits = ({ onCreated }) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "user-id": USER_ID,
+          "user-id": getUserId(),
         },
         body: JSON.stringify({
           name: form.name,

@@ -461,7 +461,8 @@ app.delete('/api/habits/:habitId', (req, res) => {
 
 // --- GET USER HABITS (FIXED) ---
 app.get('/api/user/habits', (req, res) => {
-  const userId = req.headers['user-id'] || 'default_user';
+  const userId = req.headers['user-id'];
+  if (!userId) return res.status(401).json({ error: "Missing user ID" });
   const habits = db.prepare('SELECT * FROM habits WHERE user_id = ? ORDER BY created_at DESC').all(userId);
 
   // For each habit, calculate stats
@@ -529,7 +530,8 @@ app.get('/api/user/stats/trend', (req, res) => {
 
 // Get all habit completions for a user on a specific date
 app.get('/api/user/habits/completions', (req, res) => {
-  const userId = req.headers['user-id'] || 'default_user';
+  const userId = req.headers['user-id'];
+  if (!userId) return res.status(401).json({ error: "Missing user ID" });
   const date = req.query.date;
   if (!date) return res.status(400).json({ error: "Missing date" });
 
@@ -615,7 +617,8 @@ app.post('/api/user/mood', (req, res) => {
 
 // Mark habit as completed for a date (with streak update)
 app.post('/api/habits/:habitId/complete', (req, res) => {
-  const userId = req.headers['user-id'] || 'default_user';
+  const userId = req.headers['user-id'];
+  if (!userId) return res.status(401).json({ error: "Missing user ID" });
   const habitId = Number(req.params.habitId);
   const { date } = req.body;
   if (!date) return res.status(400).json({ error: "Missing date" });
@@ -642,7 +645,8 @@ app.post('/api/habits/:habitId/complete', (req, res) => {
 
 // Unmark habit as completed for a date (with streak update)
 app.post('/api/habits/:habitId/uncomplete', (req, res) => {
-  const userId = req.headers['user-id'] || 'default_user';
+  const userId = req.headers['user-id'];
+  if (!userId) return res.status(401).json({ error: "Missing user ID" });
   const habitId = Number(req.params.habitId);
   const { date } = req.body;
   if (!date) return res.status(400).json({ error: "Missing date" });
@@ -683,6 +687,28 @@ app.get('/api/user/profile', (req, res) => {
     memberSince: row.created_at,
     updatedAt: row.updated_at,
   });
+});
+
+// --- DELETE USER ACCOUNT ---
+app.delete('/api/user/delete', (req, res) => {
+  const userId = req.headers['user-id'];
+  if (!userId) return res.status(401).json({ error: "Missing user ID" });
+
+  try {
+    // Delete all habit completions for user
+    db.prepare('DELETE FROM habit_completions WHERE user_id = ?').run(userId);
+    // Delete all habits for user
+    db.prepare('DELETE FROM habits WHERE user_id = ?').run(userId);
+    // Delete all moods for user
+    db.prepare('DELETE FROM daily_mood WHERE user_id = ?').run(userId);
+    // Delete user from user_auth
+    db.prepare('DELETE FROM user_auth WHERE user_id = ?').run(userId);
+    // Delete user from users
+    db.prepare('DELETE FROM users WHERE user_id = ?').run(userId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete user account" });
+  }
 });
 
 // --- REGISTER ENDPOINT ---

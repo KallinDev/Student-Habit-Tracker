@@ -137,7 +137,7 @@ const ProgressContent = () => {
   const [pieData, setPieData] = useState([]);
 
   useEffect(() => {
-    const userId = localStorage.getItem("userId") || "default_user";
+    const userId = localStorage.getItem("userId");
     // Fetch stats
     fetch("http://localhost:3000/api/user/stats", {
       headers: { "user-id": userId },
@@ -192,7 +192,7 @@ const ProgressContent = () => {
   // Fetch chart data when selectedPeriod changes
   useEffect(() => {
     setLoadingChart(true);
-    const userId = localStorage.getItem("userId") || "default_user";
+    const userId = localStorage.getItem("userId");
     fetch(`http://localhost:3000/api/user/stats/trend?days=${selectedPeriod}`, {
       headers: { "user-id": userId },
     })

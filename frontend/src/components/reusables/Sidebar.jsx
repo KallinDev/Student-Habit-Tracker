@@ -19,7 +19,7 @@ const Sidebar = () => {
 
   // Sidebar navigation items
   const sidebarItems = [
-    { name: "Dashboard", icon: BarChart3, path: "/" },
+    { name: "Dashboard", icon: BarChart3, path: "/dashboard" },
     { name: "Profile", icon: User, path: "/profile" },
     { name: "My Habits", icon: Target, path: "/habits" },
     { name: "Progress", icon: BarChart3, path: "/progress" },
@@ -43,8 +43,10 @@ const Sidebar = () => {
   };
 
   const isActivePage = (path) => {
-    if (path === "/" && location.pathname === "/") return true;
-    if (path !== "/" && location.pathname.startsWith(path)) return true;
+    if (path === "/dashboard" && location.pathname === "/dashboard")
+      return true;
+    if (path !== "/dashboard" && location.pathname.startsWith(path))
+      return true;
     return false;
   };
 
@@ -66,7 +68,7 @@ const Sidebar = () => {
   // Fetch profile data using logged-in userId
   const fetchProfile = async () => {
     try {
-      const userId = localStorage.getItem("userId") || "default_user";
+      const userId = localStorage.getItem("userId");
       const res = await fetch("/api/user/profile", {
         headers: { "user-id": userId },
       });
@@ -129,7 +131,7 @@ const Sidebar = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("userId");
     setShowLogoutModal(false);
-    navigate("/login");
+    navigate("/");
   };
 
   return (

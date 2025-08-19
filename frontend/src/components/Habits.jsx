@@ -183,7 +183,7 @@ const HabitsContent = () => {
   // Fetch habits for logged-in user
   const fetchHabits = async () => {
     try {
-      const userId = localStorage.getItem("userId") || "default_user";
+      const userId = localStorage.getItem("userId");
       const res = await fetch(`${API_BASE}/api/user/habits`, {
         headers: { "user-id": userId },
       });
@@ -268,7 +268,7 @@ const HabitsContent = () => {
     e.preventDefault();
     if (!editingHabit) return;
     try {
-      const userId = localStorage.getItem("userId") || "default_user";
+      const userId = localStorage.getItem("userId");
       const payload = {
         name: editForm.name,
         icon: editForm.icon,
@@ -311,7 +311,7 @@ const HabitsContent = () => {
   const confirmDelete = async () => {
     if (!habitToDelete) return;
     try {
-      const userId = localStorage.getItem("userId") || "default_user";
+      const userId = localStorage.getItem("userId");
       await fetch(`${API_BASE}/api/habits/${habitToDelete.id}`, {
         method: "DELETE",
         headers: { "user-id": userId },

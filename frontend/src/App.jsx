@@ -32,7 +32,7 @@ const AuthRoutes = () => {
   const navigate = useNavigate();
 
   const handleAuthSuccess = () => {
-    navigate("/");
+    navigate("/dashboard");
   };
 
   return (
@@ -50,9 +50,11 @@ const App = () => {
     <ThemeProvider>
       <Router>
         <Routes>
-          <Route path="/*" element={<AuthRoutes />} />
+          <Route path="/" element={<AuthRoutes />} />
+          <Route path="/login" element={<AuthRoutes />} />
+          <Route path="/register" element={<AuthRoutes />} />
           <Route element={<Layout />}>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/habits" element={<Habits />} />
             <Route path="/add-habit" element={<AddHabits />} />
