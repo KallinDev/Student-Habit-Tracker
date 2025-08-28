@@ -1,5 +1,4 @@
-import React, { useContext } from "react";
-import { ThemeContext } from "./reusables/ThemeContext.js";
+import React from "react";
 import { Book, Dumbbell, Brain, Target } from "lucide-react";
 
 // Indigo palette
@@ -36,10 +35,8 @@ const features = [
 ];
 
 const Home = () => {
-  const { themeClasses, isDarkMode } = useContext(ThemeContext);
-
   return (
-    <div className="min-h-screen flex flex-col font-sans overflow-hidden bg-black relative">
+    <div className="min-h-screen flex flex-col font-sans overflow-hidden bg-gray-900 relative">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body, .font-sans { font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; }
@@ -133,15 +130,13 @@ const Home = () => {
           >
             <div className="flex-1 w-full sm:w-auto">
               <h1
-                className={`text-3xl sm:text-5xl md:text-6xl font-extrabold mb-4 sm:mb-6 ${
-                  isDarkMode ? "text-white" : "text-gray-900"
-                } animate-fade-in`}
+                className="text-3xl sm:text-5xl md:text-6xl font-extrabold mb-4 sm:mb-6 text-white animate-fade-in"
                 style={{ animationDelay: "0.3s", animationFillMode: "both" }}
               >
                 Build Habits. Achieve Goals.
               </h1>
               <p
-                className={`text-base sm:text-lg md:text-xl mb-6 sm:mb-8 ${themeClasses.textSecondary} animate-fade-in`}
+                className="text-base sm:text-lg md:text-xl mb-6 sm:mb-8 text-gray-300 animate-fade-in"
                 style={{ animationDelay: "0.4s", animationFillMode: "both" }}
               >
                 The all-in-one habit tracker for students. Stay motivated,
@@ -157,7 +152,7 @@ const Home = () => {
             </div>
             <div className="flex-1 flex justify-center w-full sm:w-auto mb-6 sm:mb-0">
               {/* Animated Illustration/Icon */}
-              <div className="bg-indigo-100 dark:bg-indigo-900 rounded-full p-6 sm:p-8 shadow-lg flex items-center justify-center animate-pulse">
+              <div className="bg-indigo-900 rounded-full p-6 sm:p-8 shadow-lg flex items-center justify-center animate-pulse">
                 <Brain size={70} className="text-indigo-500 sm:hidden" />
                 <Brain size={100} className="text-indigo-500 hidden sm:block" />
               </div>
@@ -170,23 +165,15 @@ const Home = () => {
               {features.map((f, i) => (
                 <div
                   key={i}
-                  className={`rounded-xl shadow-sm ${themeClasses.cardBg} border ${themeClasses.border} p-4 sm:p-6 flex flex-col items-center text-center animate-fade-in`}
+                  className="rounded-xl shadow-sm bg-gray-800 border border-gray-700 p-4 sm:p-6 flex flex-col items-center text-center animate-fade-in"
                   style={{
                     animationDelay: `${0.6 + i * 0.1}s`,
                     animationFillMode: "both",
                   }}
                 >
                   {f.icon}
-                  <h3
-                    className={`font-semibold mb-2 ${
-                      isDarkMode ? "text-white" : "text-gray-900"
-                    }`}
-                  >
-                    {f.title}
-                  </h3>
-                  <p className={`text-xs sm:text-sm ${themeClasses.textMuted}`}>
-                    {f.desc}
-                  </p>
+                  <h3 className="font-semibold mb-2 text-white">{f.title}</h3>
+                  <p className="text-xs sm:text-sm text-gray-400">{f.desc}</p>
                 </div>
               ))}
             </div>
