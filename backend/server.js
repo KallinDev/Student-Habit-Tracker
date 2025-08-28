@@ -5,6 +5,8 @@ const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
 
+const dbPath = path.join(__dirname, 'habits.db');
+
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -21,7 +23,7 @@ app.use(cors({
 }));
 
 // Initialize SQLite database
-const db = new Database(process.env.DB_PATH || 'habits.db');
+const db = new Database(dbPath);
 
 // --- MIGRATION: Ensure icon_color column exists ---
 try {
