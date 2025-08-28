@@ -3,7 +3,7 @@ import { ThemeContext } from "./reusables/ThemeContext.js";
 import Sidebar from "./reusables/Sidebar.jsx";
 
 // Use API_BASE for all backend requests
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 const ProfileContent = () => {
   // Sidebar toggle state for mobile

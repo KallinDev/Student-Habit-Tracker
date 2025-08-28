@@ -141,7 +141,7 @@ const ProgressContent = () => {
   useEffect(() => {
     const userId = localStorage.getItem("userId");
     // Fetch stats
-    fetch("http://localhost:3000/api/user/stats", {
+    fetch("https://student-habit-tracker.onrender.com/api/user/stats", {
       headers: { "user-id": userId },
     })
       .then((res) => res.json())
@@ -155,7 +155,7 @@ const ProgressContent = () => {
       });
 
     // Fetch habits
-    fetch("http://localhost:3000/api/user/habits", {
+    fetch("https://student-habit-tracker.onrender.com/api/user/habits", {
       headers: { "user-id": userId },
     })
       .then((res) => res.json())
@@ -195,9 +195,12 @@ const ProgressContent = () => {
   useEffect(() => {
     setLoadingChart(true);
     const userId = localStorage.getItem("userId");
-    fetch(`http://localhost:3000/api/user/stats/trend?days=${selectedPeriod}`, {
-      headers: { "user-id": userId },
-    })
+    fetch(
+      `https://student-habit-tracker.onrender.com/api/user/stats/trend?days=${selectedPeriod}`,
+      {
+        headers: { "user-id": userId },
+      }
+    )
       .then((res) => res.json())
       .then((data) => {
         // data: [{ date: "YYYY-MM-DD", successRate: number }]

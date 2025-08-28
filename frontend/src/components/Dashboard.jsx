@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { ThemeContext } from "./reusables/ThemeContext.js";
 
-const API_BASE = "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_API_BASE;
 function getUserId() {
   return localStorage.getItem("userId");
 }

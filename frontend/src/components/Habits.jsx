@@ -20,7 +20,7 @@ import { useNavigate } from "react-router-dom";
 import Sidebar from "./reusables/Sidebar.jsx";
 
 // Change this to your backend port if needed
-const API_BASE = "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 const iconMap = {
   Droplets,

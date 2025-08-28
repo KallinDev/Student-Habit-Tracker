@@ -69,9 +69,12 @@ const Sidebar = () => {
   const fetchProfile = async () => {
     try {
       const userId = localStorage.getItem("userId");
-      const res = await fetch("/api/user/profile", {
-        headers: { "user-id": userId },
-      });
+      const res = await fetch(
+        "https://student-habit-tracker.onrender.com/api/user/profile",
+        {
+          headers: { "user-id": userId },
+        }
+      );
       if (!res.ok) throw new Error("Failed to fetch profile");
       const data = await res.json();
       setFirstName(data.firstName || "User");
