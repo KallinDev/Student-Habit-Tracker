@@ -65,7 +65,7 @@ const RegisterForm = ({ onAuthSuccess, onSwitchToLogin }) => {
   };
 
   return (
-    <div className="flex items-center justify-center w-full h-full relative">
+    <div className="flex items-center justify-center w-full h-full relative px-2 sm:px-0">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body, .font-sans { font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; }
@@ -77,10 +77,11 @@ const RegisterForm = ({ onAuthSuccess, onSwitchToLogin }) => {
       `}</style>
 
       <div
-        className={`relative z-10 bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-10 w-full max-w-md border border-gray-800 border-opacity-30 fade-in-box ${
+        className={`relative z-10 bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-4 sm:p-10 w-full max-w-md border border-gray-800 border-opacity-30 fade-in-box ${
           showBox ? "active" : ""
+        }
         }`}
-        style={{ minHeight: 480 }}
+        style={{ minHeight: 400 }}
       >
         <div
           className={`absolute -top-8 left-1/2 transform -translate-x-1/2 bg-indigo-600 rounded-full shadow-lg w-16 h-16 flex items-center justify-center border-4 border-indigo-400 pop-in-check ${
@@ -98,19 +99,18 @@ const RegisterForm = ({ onAuthSuccess, onSwitchToLogin }) => {
             />
           </svg>
         </div>
-        <h2 className="text-3xl font-bold text-center text-gray-100 mb-8 font-sans tracking-tight">
+        <h2 className="text-3xl font-bold text-center text-gray-100 mb-8 font-sans tracking-tight mt-12">
           Create Account
         </h2>
         <form className="space-y-6" onSubmit={handleSubmit} autoComplete="off">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
-                First Name
-                <span className="text-red-500 ml-1">*</span>
+          <div className="flex flex-row gap-2">
+            <div className="w-1/2">
+              <label className="block text-xs font-medium text-gray-300 mb-2 flex items-center gap-2">
+                First Name <span className="text-red-500 ml-1">*</span>
               </label>
               <input
                 type="text"
-                className="w-full px-4 py-3 rounded-xl border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                className="w-full px-2 py-2 rounded-lg border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -119,13 +119,13 @@ const RegisterForm = ({ onAuthSuccess, onSwitchToLogin }) => {
                 maxLength={40}
               />
             </div>
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+            <div className="w-1/2">
+              <label className="block text-xs font-medium text-gray-300 mb-2">
                 Last Name
               </label>
               <input
                 type="text"
-                className="w-full px-4 py-3 rounded-xl border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                className="w-full px-2 py-2 rounded-lg border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
@@ -151,15 +151,14 @@ const RegisterForm = ({ onAuthSuccess, onSwitchToLogin }) => {
               pattern="^[^@]+@[^@]+\.[^@]+$"
             />
           </div>
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
-                Password
-                <span className="text-red-500 ml-1">*</span>
+          <div className="flex flex-row gap-2">
+            <div className="w-1/2">
+              <label className="block text-xs font-medium text-gray-300 mb-2 flex items-center gap-2">
+                Password <span className="text-red-500 ml-1">*</span>
               </label>
               <input
                 type="password"
-                className="w-full px-4 py-3 rounded-xl border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                className="w-full px-2 py-2 rounded-lg border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -168,14 +167,13 @@ const RegisterForm = ({ onAuthSuccess, onSwitchToLogin }) => {
                 maxLength={100}
               />
             </div>
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center gap-2">
-                Re-Enter Password
-                <span className="text-red-500 ml-1">*</span>
+            <div className="w-1/2">
+              <label className="block text-xs font-medium text-gray-300 mb-2 flex items-center gap-2">
+                Re-Enter Password <span className="text-red-500 ml-1">*</span>
               </label>
               <input
                 type="password"
-                className="w-full px-4 py-3 rounded-xl border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"
+                className="w-full px-2 py-2 rounded-lg border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm"
                 value={retypePassword}
                 onChange={(e) => setRetypePassword(e.target.value)}
                 required
@@ -185,7 +183,7 @@ const RegisterForm = ({ onAuthSuccess, onSwitchToLogin }) => {
               />
             </div>
           </div>
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 Language

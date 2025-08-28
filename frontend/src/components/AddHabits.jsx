@@ -142,19 +142,19 @@ const AddHabits = ({ onCreated }) => {
 
   return (
     <div
-      className={`min-h-screen flex items-center justify-center ${
+      className={`min-h-screen flex items-center justify-center px-2 sm:px-0 ${
         isDarkMode ? themeClasses.mainBg : "bg-gray-100"
       }`}
     >
       <div
-        className={`rounded-2xl shadow-lg w-full max-w-xl p-8 border ${
+        className={`rounded-2xl shadow-lg w-full max-w-xl p-4 sm:p-8 mx-2 border ${
           isDarkMode
             ? "bg-gray-800 border-indigo-500 text-white"
             : "bg-white border-indigo-500 text-black"
         }`}
       >
         <h2
-          className={`text-2xl font-bold mb-6 text-center ${
+          className={`text-2xl font-bold mb-6 text-center mt-10 sm:mt-0 ${
             isDarkMode ? "text-indigo-200" : "text-indigo-700"
           }`}
         >
@@ -194,7 +194,7 @@ const AddHabits = ({ onCreated }) => {
           >
             Choose Icon
           </label>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 justify-center">
             {iconOptions.map((opt) => (
               <button
                 key={opt.label}
@@ -239,7 +239,7 @@ const AddHabits = ({ onCreated }) => {
           >
             Icon Color
           </label>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 justify-center">
             {colorOptions.map((color) => (
               <button
                 key={color.name}
@@ -305,7 +305,7 @@ const AddHabits = ({ onCreated }) => {
         </div>
 
         {/* Daily Goal & Unit */}
-        <div className="mb-4 flex gap-2">
+        <div className="mb-4 flex flex-col sm:flex-row gap-2">
           <div className="flex-1">
             <label
               className={`block mb-1 font-medium ${
@@ -379,7 +379,15 @@ const AddHabits = ({ onCreated }) => {
         </div>
 
         {/* Buttons */}
-        <div className="flex justify-end gap-2 mt-6">
+        <div className="flex flex-col sm:flex-row justify-end gap-2 mt-6">
+          <button
+            type="submit"
+            className={`px-4 py-2 rounded-lg border bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 transition-all duration-150`}
+            disabled={submitting}
+            onClick={handleSubmit}
+          >
+            {submitting ? "Creating..." : "Create Habit"}
+          </button>
           <button
             type="button"
             className={`px-4 py-2 rounded-lg border transition-all duration-150 ${
@@ -391,14 +399,6 @@ const AddHabits = ({ onCreated }) => {
             disabled={submitting}
           >
             Cancel
-          </button>
-          <button
-            type="submit"
-            className={`px-4 py-2 rounded-lg border bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600 active:bg-indigo-700 transition-all duration-150`}
-            disabled={submitting}
-            onClick={handleSubmit}
-          >
-            {submitting ? "Creating..." : "Create Habit"}
           </button>
         </div>
       </div>

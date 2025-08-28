@@ -15,12 +15,16 @@ import AddHabits from "./components/AddHabits.jsx";
 import Progress from "./components/Progress.jsx";
 import About from "./components/About.jsx";
 import FlipCardAuth from "./components/reusables/FlipCardAuth.jsx";
+import Home from "./components/Home.jsx";
 
 const Layout = () => {
   const [firstName] = useState("Gustav");
   return (
     <div className="flex h-screen">
-      <Sidebar firstName={firstName} />
+      {/* Sidebar only on desktop */}
+      <div className="hidden lg:flex h-full">
+        <Sidebar firstName={firstName} />
+      </div>
       <div className="flex-1 overflow-auto">
         <Outlet />
       </div>
@@ -50,7 +54,7 @@ const App = () => {
     <ThemeProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<AuthRoutes />} />
+          <Route path="/" element={<Home />} />
           <Route path="/login" element={<AuthRoutes />} />
           <Route path="/register" element={<AuthRoutes />} />
           <Route element={<Layout />}>

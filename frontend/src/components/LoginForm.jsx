@@ -44,7 +44,7 @@ const LoginForm = ({ onAuthSuccess, onSwitchToRegister }) => {
   };
 
   return (
-    <div className="flex items-center justify-center w-full h-full relative">
+    <div className="flex items-center justify-center w-full h-full relative px-2 sm:px-0">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body, .font-sans { font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; }
@@ -56,10 +56,11 @@ const LoginForm = ({ onAuthSuccess, onSwitchToRegister }) => {
       `}</style>
 
       <div
-        className={`relative z-10 bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-10 w-full max-w-md border border-gray-800 border-opacity-30 fade-in-box ${
+        className={`relative z-10 bg-white/10 backdrop-blur-xl rounded-3xl shadow-2xl p-4 sm:p-10 w-full max-w-md border border-gray-800 border-opacity-30 fade-in-box ${
           showBox ? "active" : ""
+        }
         }`}
-        style={{ minHeight: 480 }}
+        style={{ minHeight: 400 }}
       >
         <div
           className={`absolute -top-8 left-1/2 transform -translate-x-1/2 bg-indigo-600 rounded-full shadow-lg w-16 h-16 flex items-center justify-center border-4 border-indigo-400 pop-in-check ${
@@ -77,7 +78,7 @@ const LoginForm = ({ onAuthSuccess, onSwitchToRegister }) => {
             />
           </svg>
         </div>
-        <h2 className="text-3xl font-bold text-center text-gray-100 mb-8 font-sans tracking-tight">
+        <h2 className="text-3xl font-bold text-center text-gray-100 mb-8 font-sans tracking-tight mt-12">
           Sign In
         </h2>
         <form className="space-y-6" onSubmit={handleSubmit} autoComplete="off">
