@@ -14,11 +14,12 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Use environment variable for allowed frontend origin
-const allowedOrigin = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
-
-// CORS setup: allow credentials and use env variable for origin
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://studenthabittracker.netlify.app'
+];
 app.use(cors({
-  origin: allowedOrigin,
+  origin: allowedOrigins,
   credentials: true
 }));
 
