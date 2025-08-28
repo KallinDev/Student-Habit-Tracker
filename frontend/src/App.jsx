@@ -16,6 +16,7 @@ import Progress from "./components/Progress.jsx";
 import About from "./components/About.jsx";
 import FlipCardAuth from "./components/reusables/FlipCardAuth.jsx";
 import Home from "./components/Home.jsx";
+import RequireAuth from "./components/reusables/RequireAuth.jsx";
 
 const Layout = () => {
   const [firstName] = useState("Gustav");
@@ -58,12 +59,54 @@ const App = () => {
           <Route path="/login" element={<AuthRoutes />} />
           <Route path="/register" element={<AuthRoutes />} />
           <Route element={<Layout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/habits" element={<Habits />} />
-            <Route path="/add-habit" element={<AddHabits />} />
-            <Route path="/progress" element={<Progress />} />
-            <Route path="/about" element={<About />} />
+            <Route
+              path="/dashboard"
+              element={
+                <RequireAuth>
+                  <Dashboard />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <RequireAuth>
+                  <Profile />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/habits"
+              element={
+                <RequireAuth>
+                  <Habits />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/add-habit"
+              element={
+                <RequireAuth>
+                  <AddHabits />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/progress"
+              element={
+                <RequireAuth>
+                  <Progress />
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/about"
+              element={
+                <RequireAuth>
+                  <About />
+                </RequireAuth>
+              }
+            />
           </Route>
         </Routes>
       </Router>
