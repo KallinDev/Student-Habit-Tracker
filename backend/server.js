@@ -692,6 +692,10 @@ app.get('/api/user/profile', (req, res) => {
   });
 });
 
+app.get('/api/health', (req, res) => {
+  res.send('OK');
+});
+
 // --- DELETE USER ACCOUNT ---
 app.delete('/api/user/delete', (req, res) => {
   const userId = req.headers['user-id'];
@@ -796,7 +800,7 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Habit Tracker API running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`📊 Health check: https://student-habit-tracker.onrender.com/api/health`);
   console.log(`💾 Database: SQLite (Better-SQLite3)`);
 });
 
